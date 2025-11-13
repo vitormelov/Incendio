@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
+import IncendiosApagadosPage from './pages/IncendiosApagadosPage';
 import Dashboard from './components/Dashboard';
 import IncendioList from './components/IncendioList';
 import IncendioForm from './components/IncendioForm';
@@ -10,9 +11,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import { useState, useEffect } from 'react';
 import { Incendio } from './types';
-import { getIncendios, updateIncendio } from './services/firestore';
+import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail } from './services/firestore';
 import { getCurrentUser, logout, onAuthChange, isAdmin } from './services/auth';
-import { Home, BarChart3, List, LogOut, User, Shield } from 'lucide-react';
+import { Home, BarChart3, List, LogOut, User, Shield, CheckCircle } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
 function App() {
@@ -40,6 +41,19 @@ function App() {
       setAllIncendios(data);
     } catch (error) {
       console.error('Erro ao carregar incêndios:', error);
+    }
+  };
+
+  const handleResolveIncendio = async (id: string) => {
+    try {
+      const hoje = new Date();
+      const dataFoiApagada = formatLocalDate(hoje);
+      
+      await updateIncendio(id, { dataFoiApagada });
+      await loadAllIncendios();
+    } catch (error) {
+      console.error('Erro ao marcar incêndio como resolvido:', error);
+      alert('Erro ao marcar incêndio como resolvido');
     }
   };
 
@@ -86,6 +100,13 @@ function App() {
                       <List size={20} />
                       <span>Todos os Incêndios</span>
                     </Link>
+                    <Link
+                      to="/incendios-apagados"
+                      className="flex items-center gap-2 px-4 py-2 text-green-700 hover:bg-green-50 rounded"
+                    >
+                      <CheckCircle size={20} />
+                      <span>Resolvidos</span>
+                    </Link>
                     {isAdmin(user) && (
                       <Link
                         to="/admin"
@@ -99,7 +120,7 @@ function App() {
                   <div className="flex items-center gap-3 pl-4 border-l border-gray-300">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <User size={18} />
-                      <span className="max-w-[200px] truncate">{user.email}</span>
+                      <span className="max-w-[200px] truncate">{getUserNameByEmail(user.email)}</span>
                     </div>
                     <button
                       onClick={handleLogout}
@@ -152,12 +173,20 @@ function App() {
             }
           />
           <Route
+            path="/incendios-apagados"
+            element={
+              <ProtectedRoute>
+                <IncendiosApagadosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/todos-incendios"
             element={
               <ProtectedRoute>
                 <div className="max-w-7xl mx-auto px-4 py-8">
                   <IncendioList
-                    incendios={allIncendios}
+                    incendios={allIncendios.filter(inc => !inc.dataFoiApagada)}
                     onEdit={(inc) => {
                       setSelectedIncendio(inc);
                       setShowForm(true);
@@ -172,6 +201,11 @@ function App() {
                         alert('Erro ao excluir incêndio');
                       }
                     }}
+                    onResolve={handleResolveIncendio}
+                    showResolveButton={true}
+                    showStatusFilter={true}
+                    showEditButton={false}
+                    showDeleteButton={false}
                   />
                   {showForm && selectedIncendio && (
                     <IncendioForm

@@ -19,12 +19,16 @@ export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioD
   // Calcular atraso (apenas para incêndios abertos com data de apagar)
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0); // Normalizar para comparar apenas datas
-  const dataApagar = incendio.dataPretendeApagar && !incendio.dataFoiApagada 
-    ? new Date(incendio.dataPretendeApagar) 
-    : null;
-  if (dataApagar) {
+  
+  let dataApagar: Date | null = null;
+  if (incendio.dataPretendeApagar && !incendio.dataFoiApagada) {
+    // Parse da data no formato YYYY-MM-DD no fuso local
+    const dateString = incendio.dataPretendeApagar.split('T')[0];
+    const [year, month, day] = dateString.split('-').map(Number);
+    dataApagar = new Date(year, month - 1, day);
     dataApagar.setHours(0, 0, 0, 0);
   }
+  
   const atraso = dataApagar ? differenceInDays(hoje, dataApagar) : null;
   // Se atraso > 0 = Atrasado, se atraso <= 0 ou null = Aberto
   const status = !incendio.dataFoiApagada 
@@ -93,7 +97,12 @@ export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioD
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Data do Incêndio</label>
               <p className="text-base text-gray-900">
-                {format(new Date(incendio.dataAconteceu), 'dd/MM/yyyy', { locale: ptBR })}
+                {(() => {
+                  const dateStr = incendio.dataAconteceu.split('T')[0];
+                  const [year, month, day] = dateStr.split('-').map(Number);
+                  const date = new Date(year, month - 1, day);
+                  return format(date, 'dd/MM/yyyy', { locale: ptBR });
+                })()}
               </p>
             </div>
 
@@ -101,7 +110,12 @@ export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioD
               <label className="block text-sm font-medium text-gray-500 mb-1">Data a ser Apagada</label>
               <p className="text-base text-gray-900">
                 {incendio.dataPretendeApagar
-                  ? format(new Date(incendio.dataPretendeApagar), 'dd/MM/yyyy', { locale: ptBR })
+                  ? (() => {
+                      const dateStr = incendio.dataPretendeApagar.split('T')[0];
+                      const [year, month, day] = dateStr.split('-').map(Number);
+                      const date = new Date(year, month - 1, day);
+                      return format(date, 'dd/MM/yyyy', { locale: ptBR });
+                    })()
                   : 'Não informado'}
               </p>
             </div>
@@ -126,7 +140,12 @@ export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioD
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">Data Foi Apagada</label>
                 <p className="text-base text-gray-900">
-                  {format(new Date(incendio.dataFoiApagada), 'dd/MM/yyyy', { locale: ptBR })}
+                  {(() => {
+                    const dateStr = incendio.dataFoiApagada.split('T')[0];
+                    const [year, month, day] = dateStr.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    return format(date, 'dd/MM/yyyy', { locale: ptBR });
+                  })()}
                 </p>
               </div>
             )}

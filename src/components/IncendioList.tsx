@@ -1,47 +1,97 @@
 import { useState } from 'react';
-import { Edit, Filter, Eye } from 'lucide-react';
+import { Edit, Filter, Eye, Check, Trash2 } from 'lucide-react';
 import { Incendio, Disciplina, Severidade } from '../types';
 import { getDisciplinaName, getSeveridadeName, getDisciplinaColor } from '../utils/colors';
-import { getSetorById } from '../config/setores';
+import { getSetorById, setores } from '../config/setores';
 import { format, differenceInDays } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 import IncendioDetails from './IncendioDetails';
+import { getCurrentUser, isAdmin } from '../services/auth';
 
 interface IncendioListProps {
   incendios: Incendio[];
   onEdit: (incendio: Incendio) => void;
   onDelete: (id: string) => void;
+  onResolve?: (id: string) => void;
   setor?: string;
+  showResolveButton?: boolean; // Para controlar se mostra o botão de resolver
+  showStatusFilter?: boolean; // Para controlar se mostra o filtro de status
+  showEditButton?: boolean; // Para controlar se mostra o botão de editar
+  showDeleteButton?: boolean; // Para controlar se mostra o botão de deletar (apenas admin)
 }
 
-export default function IncendioList({ incendios, onEdit, onDelete, setor }: IncendioListProps) {
+type StatusFilter = '' | 'aberto' | 'atrasado';
+
+export default function IncendioList({ 
+  incendios, 
+  onEdit, 
+  onDelete, 
+  onResolve, 
+  setor, 
+  showResolveButton = false,
+  showStatusFilter = true,
+  showEditButton = false,
+  showDeleteButton = false
+}: IncendioListProps) {
+  const user = getCurrentUser();
+  const userIsAdmin = isAdmin(user);
   const [filters, setFilters] = useState({
+    setor: '' as string | '',
     disciplina: '' as Disciplina | '',
     severidade: '' as Severidade | '',
     isGargalo: '' as boolean | '',
-    apenasAbertos: false,
+    status: '' as StatusFilter,
   });
   const [selectedIncendio, setSelectedIncendio] = useState<Incendio | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  const filteredIncendios = incendios.filter(inc => {
-    if (setor && inc.setor !== setor) return false;
-    if (filters.disciplina && inc.disciplina !== filters.disciplina) return false;
-    if (filters.severidade && inc.severidade !== filters.severidade) return false;
-    if (filters.isGargalo !== '' && inc.isGargalo !== filters.isGargalo) return false;
-    if (filters.apenasAbertos && inc.dataFoiApagada) return false;
-    return true;
-  });
-
+  // Função para calcular atraso (precisa estar antes de getIncendioStatus)
   const calcularAtraso = (incendio: Incendio): number | null => {
     // Calcular atraso apenas para incêndios abertos com data de apagar
     if (!incendio.dataPretendeApagar || incendio.dataFoiApagada) return null;
+    
+    // Parse da data no formato YYYY-MM-DD no fuso local
     const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Normalizar para comparar apenas datas
-    const dataApagar = new Date(incendio.dataPretendeApagar);
+    hoje.setHours(0, 0, 0, 0);
+    
+    // Se dataPretendeApagar está no formato YYYY-MM-DD, parsear corretamente
+    const [year, month, day] = incendio.dataPretendeApagar.split('T')[0].split('-').map(Number);
+    const dataApagar = new Date(year, month - 1, day);
     dataApagar.setHours(0, 0, 0, 0);
+    
     return differenceInDays(hoje, dataApagar);
   };
+
+  // Função para calcular status de um incêndio
+  const getIncendioStatus = (inc: Incendio): 'aberto' | 'atrasado' | 'fechado' => {
+    if (inc.dataFoiApagada) return 'fechado';
+    const atraso = calcularAtraso(inc);
+    if (atraso !== null && atraso > 0) return 'atrasado';
+    return 'aberto';
+  };
+
+  const filteredIncendios = incendios.filter(inc => {
+    // Filtro por setor (se vier da prop ou do filtro)
+    if (setor && inc.setor !== setor) return false;
+    if (!setor && filters.setor && inc.setor !== filters.setor) return false;
+    
+    // Filtro por disciplina
+    if (filters.disciplina && inc.disciplina !== filters.disciplina) return false;
+    
+    // Filtro por severidade
+    if (filters.severidade && inc.severidade !== filters.severidade) return false;
+    
+    // Filtro por gargalo
+    if (filters.isGargalo !== '' && inc.isGargalo !== filters.isGargalo) return false;
+    
+    // Filtro por status
+    if (filters.status) {
+      const status = getIncendioStatus(inc);
+      if (status !== filters.status) return false;
+    }
+    
+    return true;
+  });
 
   const getStatus = (incendio: Incendio): { texto: string; cor: string } => {
     if (incendio.dataFoiApagada) {
@@ -79,11 +129,26 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
         </div>
 
         {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${showStatusFilter ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
+          {/* Filtro por Setor */}
+          {!setor && (
+            <select
+              value={filters.setor}
+              onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
+              className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos os Setores</option>
+              {setores.map(s => (
+                <option key={s.id} value={s.id}>{s.nome}</option>
+              ))}
+            </select>
+          )}
+
+          {/* Filtro por Disciplina */}
           <select
             value={filters.disciplina}
             onChange={(e) => setFilters({ ...filters, disciplina: e.target.value as Disciplina | '' })}
-            className="p-2 border rounded text-sm"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Todas as Disciplinas</option>
             <option value="civil">{getDisciplinaName('civil')}</option>
@@ -94,10 +159,11 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
             <option value="ambientacao">{getDisciplinaName('ambientacao')}</option>
           </select>
 
+          {/* Filtro por Severidade */}
           <select
             value={filters.severidade}
             onChange={(e) => setFilters({ ...filters, severidade: e.target.value as Severidade | '' })}
-            className="p-2 border rounded text-sm"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Todas as Severidades</option>
             <option value={1}>1 - Pequeno</option>
@@ -105,24 +171,29 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
             <option value={3}>3 - Grande</option>
           </select>
 
+          {/* Filtro por Gargalo */}
           <select
             value={filters.isGargalo === '' ? '' : filters.isGargalo.toString()}
             onChange={(e) => setFilters({ ...filters, isGargalo: e.target.value === '' ? '' : e.target.value === 'true' })}
-            className="p-2 border rounded text-sm"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Todos</option>
+            <option value="">Com/Sem Gargalo</option>
             <option value="true">Apenas Gargalos</option>
             <option value="false">Sem Gargalos</option>
           </select>
 
-          <label className="flex items-center gap-2 p-2 border rounded text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={filters.apenasAbertos}
-              onChange={(e) => setFilters({ ...filters, apenasAbertos: e.target.checked })}
-            />
-            <span>Apenas Abertos</span>
-          </label>
+          {/* Filtro por Status - apenas se showStatusFilter for true */}
+          {showStatusFilter && (
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value as StatusFilter })}
+              className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos os Status</option>
+              <option value="aberto">Aberto</option>
+              <option value="atrasado">Atrasado</option>
+            </select>
+          )}
         </div>
       </div>
 
@@ -174,7 +245,12 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">{incendio.responsavel}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {format(new Date(incendio.dataAconteceu), 'dd/MM/yyyy', { locale: ptBR })}
+                    {(() => {
+                      const dateStr = incendio.dataAconteceu.split('T')[0];
+                      const [year, month, day] = dateStr.split('-').map(Number);
+                      const date = new Date(year, month - 1, day);
+                      return format(date, 'dd/MM/yyyy', { locale: ptBR });
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     {atraso !== null ? (
@@ -199,13 +275,41 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
                       >
                         <Eye size={18} />
                       </button>
-                      <button
-                        onClick={() => onEdit(incendio)}
-                        className="p-1.5 text-green-600 hover:bg-green-50 rounded"
-                        title="Editar"
-                      >
-                        <Edit size={18} />
-                      </button>
+                      {showEditButton && (
+                        <button
+                          onClick={() => onEdit(incendio)}
+                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                          title="Editar"
+                        >
+                          <Edit size={18} />
+                        </button>
+                      )}
+                      {showDeleteButton && userIsAdmin && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Tem certeza que deseja excluir este incêndio?')) {
+                              onDelete(incendio.id);
+                            }
+                          }}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                          title="Excluir (Apenas Admin)"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                      {showResolveButton && !incendio.dataFoiApagada && onResolve && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Deseja marcar este incêndio como resolvido?')) {
+                              onResolve(incendio.id);
+                            }
+                          }}
+                          className="p-1.5 text-green-700 hover:bg-green-100 rounded"
+                          title="Marcar como Resolvido"
+                        >
+                          <Check size={18} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

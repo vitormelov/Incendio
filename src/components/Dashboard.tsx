@@ -120,7 +120,12 @@ export default function Dashboard({ incendios }: DashboardProps) {
                           {getDisciplinaName(inc.disciplina)} • Responsável: {inc.responsavel}
                         </p>
                         <p className="text-sm text-gray-600">
-                          Prazo: {format(new Date(inc.dataPretendeApagar!), 'dd/MM/yyyy', { locale: ptBR })}
+                          Prazo: {(() => {
+                            const dateStr = inc.dataPretendeApagar!.split('T')[0];
+                            const [year, month, day] = dateStr.split('-').map(Number);
+                            const date = new Date(year, month - 1, day);
+                            return format(date, 'dd/MM/yyyy', { locale: ptBR });
+                          })()}
                         </p>
                       </div>
                       <span className="px-2 py-1 bg-red-600 text-white text-xs rounded">

@@ -4,6 +4,8 @@ import { Incendio, Disciplina, Severidade } from '../types';
 import { getDisciplinaName, getDisciplinaColor } from '../utils/colors';
 import { getCurrentUser, isAdmin } from '../services/auth';
 import { getUserName } from '../services/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 interface IncendioFormProps {
   incendio?: Incendio | null;
@@ -40,20 +42,40 @@ export default function IncendioForm({
         // Nova marcação - mostrar nome do usuário atual
         const user = getCurrentUser();
         if (user) {
-          const nome = await getUserName(user.uid);
-          setCriadorNome(nome || user.email || 'Usuário desconhecido');
+          // Se for admin, mostrar nome diretamente
+          if (user.email === 'projetos@preferencial.eng.br') {
+            setCriadorNome('Vitor Viana');
+          } else {
+            const nome = await getUserName(user.uid);
+            setCriadorNome(nome || user.email || 'Usuário desconhecido');
+          }
         }
       } else {
         // Editar marcação - buscar nome do criador se houver criadoPor (uid)
         if (incendio.criadoPor) {
           // Verificar se é um UID (geralmente mais longo) ou email
           if (incendio.criadoPor.includes('@')) {
-            // É email, mostrar diretamente
-            setCriadorNome(incendio.criadoPor);
+            // É email - se for admin, mostrar nome fixo
+            if (incendio.criadoPor === 'projetos@preferencial.eng.br') {
+              setCriadorNome('Vitor Viana');
+            } else {
+              setCriadorNome(incendio.criadoPor);
+            }
           } else {
             // É UID, buscar nome no Firestore
             const nome = await getUserName(incendio.criadoPor);
-            setCriadorNome(nome || incendio.criadoPor);
+            // Verificar se é admin pelo nome retornado (pode vir do Firestore também)
+            if (nome === 'Vitor Viana' || !nome) {
+              // Tentar buscar email também para verificar se é admin
+              const userDoc = await getDoc(doc(db, 'users', incendio.criadoPor));
+              if (userDoc.exists() && userDoc.data().email === 'projetos@preferencial.eng.br') {
+                setCriadorNome('Vitor Viana');
+              } else {
+                setCriadorNome(nome || incendio.criadoPor);
+              }
+            } else {
+              setCriadorNome(nome);
+            }
           }
         }
       }

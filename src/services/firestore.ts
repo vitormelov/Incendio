@@ -17,17 +17,65 @@ import { Incendio, Disciplina, Severidade } from '../types';
 const INCENDIOS_COLLECTION = 'incendios';
 const USERS_COLLECTION = 'users';
 
+// Helper para converter string de data (YYYY-MM-DD) para Date no fuso local
+const parseLocalDate = (dateString: string): Date => {
+  // Se já for uma data ISO completa, usar diretamente
+  if (dateString.includes('T')) {
+    return new Date(dateString);
+  }
+  // Para formato YYYY-MM-DD, criar data local (não UTC)
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+// Helper para converter Date para string YYYY-MM-DD no fuso local
+export const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper para converter Timestamp do Firestore para string YYYY-MM-DD no fuso local
+const timestampToLocalDateString = (timestamp: any): string | null => {
+  if (!timestamp) return null;
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return formatLocalDate(date);
+};
+
+// Helper para converter string YYYY-MM-DD ou ISO para Timestamp
+const stringToTimestamp = (dateString: string | null): Timestamp | null => {
+  if (!dateString) return null;
+  const date = parseLocalDate(dateString);
+  // Normalizar para meia-noite local
+  date.setHours(0, 0, 0, 0);
+  return Timestamp.fromDate(date);
+};
+
 export const getUserName = async (userId: string): Promise<string | null> => {
   try {
     const userDoc = await getDoc(doc(db, USERS_COLLECTION, userId));
     if (userDoc.exists()) {
-      return userDoc.data().nome || null;
+      const userData = userDoc.data();
+      // Se for o admin (email projetos@preferencial.eng.br), retornar nome fixo
+      if (userData.email === 'projetos@preferencial.eng.br') {
+        return 'Vitor Viana';
+      }
+      return userData.nome || null;
     }
     return null;
   } catch (error) {
     console.error('Erro ao buscar nome do usuário:', error);
     return null;
   }
+};
+
+// Função auxiliar para obter o nome do usuário pelo email (útil para exibição na navegação)
+export const getUserNameByEmail = (email: string | null | undefined): string => {
+  if (email === 'projetos@preferencial.eng.br') {
+    return 'Vitor Viana';
+  }
+  return email || 'Usuário';
 };
 
 export const getIncendios = async (setor?: string): Promise<Incendio[]> => {
@@ -46,9 +94,9 @@ export const getIncendios = async (setor?: string): Promise<Incendio[]> => {
   const results = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data(),
-    dataAconteceu: doc.data().dataAconteceu?.toDate?.().toISOString() || doc.data().dataAconteceu,
-    dataPretendeApagar: doc.data().dataPretendeApagar?.toDate?.().toISOString() || doc.data().dataPretendeApagar || null,
-    dataFoiApagada: doc.data().dataFoiApagada?.toDate?.().toISOString() || doc.data().dataFoiApagada || null,
+    dataAconteceu: timestampToLocalDateString(doc.data().dataAconteceu) || doc.data().dataAconteceu,
+    dataPretendeApagar: timestampToLocalDateString(doc.data().dataPretendeApagar) || null,
+    dataFoiApagada: timestampToLocalDateString(doc.data().dataFoiApagada) || null,
     createdAt: doc.data().createdAt?.toDate?.().toISOString() || doc.data().createdAt,
     updatedAt: doc.data().updatedAt?.toDate?.().toISOString() || doc.data().updatedAt,
   })) as Incendio[];
@@ -75,9 +123,9 @@ export const getIncendio = async (id: string): Promise<Incendio | null> => {
   return {
     id: docSnap.id,
     ...data,
-    dataAconteceu: data.dataAconteceu?.toDate?.().toISOString() || data.dataAconteceu,
-    dataPretendeApagar: data.dataPretendeApagar?.toDate?.().toISOString() || data.dataPretendeApagar || null,
-    dataFoiApagada: data.dataFoiApagada?.toDate?.().toISOString() || data.dataFoiApagada || null,
+    dataAconteceu: timestampToLocalDateString(data.dataAconteceu) || data.dataAconteceu,
+    dataPretendeApagar: timestampToLocalDateString(data.dataPretendeApagar) || null,
+    dataFoiApagada: timestampToLocalDateString(data.dataFoiApagada) || null,
     createdAt: data.createdAt?.toDate?.().toISOString() || data.createdAt,
     updatedAt: data.updatedAt?.toDate?.().toISOString() || data.updatedAt,
   } as Incendio;
@@ -86,9 +134,9 @@ export const getIncendio = async (id: string): Promise<Incendio | null> => {
 export const createIncendio = async (incendio: Omit<Incendio, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
   const docRef = await addDoc(collection(db, INCENDIOS_COLLECTION), {
     ...incendio,
-    dataAconteceu: Timestamp.fromDate(new Date(incendio.dataAconteceu)),
-    dataPretendeApagar: incendio.dataPretendeApagar ? Timestamp.fromDate(new Date(incendio.dataPretendeApagar)) : null,
-    dataFoiApagada: incendio.dataFoiApagada ? Timestamp.fromDate(new Date(incendio.dataFoiApagada)) : null,
+    dataAconteceu: stringToTimestamp(incendio.dataAconteceu) || Timestamp.now(),
+    dataPretendeApagar: stringToTimestamp(incendio.dataPretendeApagar || null),
+    dataFoiApagada: stringToTimestamp(incendio.dataFoiApagada || null),
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
@@ -98,18 +146,24 @@ export const createIncendio = async (incendio: Omit<Incendio, 'id' | 'createdAt'
 export const updateIncendio = async (id: string, incendio: Partial<Omit<Incendio, 'id' | 'createdAt'>>): Promise<void> => {
   const docRef = doc(db, INCENDIOS_COLLECTION, id);
   const updateData: any = {
-    ...incendio,
     updatedAt: Timestamp.now(),
   };
   
+  // Copiar outros campos que não são datas
+  Object.keys(incendio).forEach(key => {
+    if (key !== 'dataAconteceu' && key !== 'dataPretendeApagar' && key !== 'dataFoiApagada') {
+      updateData[key] = (incendio as any)[key];
+    }
+  });
+  
   if (incendio.dataAconteceu) {
-    updateData.dataAconteceu = Timestamp.fromDate(new Date(incendio.dataAconteceu));
+    updateData.dataAconteceu = stringToTimestamp(incendio.dataAconteceu);
   }
-  if (incendio.dataPretendeApagar) {
-    updateData.dataPretendeApagar = Timestamp.fromDate(new Date(incendio.dataPretendeApagar));
+  if (incendio.dataPretendeApagar !== undefined) {
+    updateData.dataPretendeApagar = stringToTimestamp(incendio.dataPretendeApagar || null);
   }
-  if (incendio.dataFoiApagada) {
-    updateData.dataFoiApagada = Timestamp.fromDate(new Date(incendio.dataFoiApagada));
+  if (incendio.dataFoiApagada !== undefined) {
+    updateData.dataFoiApagada = stringToTimestamp(incendio.dataFoiApagada || null);
   }
   
   await updateDoc(docRef, updateData);
@@ -147,9 +201,9 @@ export const getIncendiosByFilter = async (
   let results = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data(),
-    dataAconteceu: doc.data().dataAconteceu?.toDate?.().toISOString() || doc.data().dataAconteceu,
-    dataPretendeApagar: doc.data().dataPretendeApagar?.toDate?.().toISOString() || doc.data().dataPretendeApagar || null,
-    dataFoiApagada: doc.data().dataFoiApagada?.toDate?.().toISOString() || doc.data().dataFoiApagada || null,
+    dataAconteceu: timestampToLocalDateString(doc.data().dataAconteceu) || doc.data().dataAconteceu,
+    dataPretendeApagar: timestampToLocalDateString(doc.data().dataPretendeApagar) || null,
+    dataFoiApagada: timestampToLocalDateString(doc.data().dataFoiApagada) || null,
     createdAt: doc.data().createdAt?.toDate?.().toISOString() || doc.data().createdAt,
     updatedAt: doc.data().updatedAt?.toDate?.().toISOString() || doc.data().updatedAt,
   })) as Incendio[];
