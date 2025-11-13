@@ -9,6 +9,7 @@ import IncendioList from './components/IncendioList';
 import IncendioForm from './components/IncendioForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
+import Logo from './components/Logo';
 import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail } from './services/firestore';
@@ -74,8 +75,8 @@ function App() {
           <nav className="bg-white border-b shadow-sm">
             <div className="max-w-7xl mx-auto px-4">
               <div className="flex items-center justify-between h-16">
-                <Link to="/" className="text-2xl font-bold text-gray-900">
-                  Incendio
+                <Link to="/" className="flex items-center">
+                  <Logo size="md" />
                 </Link>
                 <div className="flex items-center gap-4">
                   <div className="flex gap-4">

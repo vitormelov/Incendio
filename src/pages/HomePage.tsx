@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { setores } from '../config/setores';
 import { FileText } from 'lucide-react';
 import { useEffect } from 'react';
+import Logo from '../components/Logo';
 
 export default function HomePage() {
   useEffect(() => {
@@ -12,7 +13,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">Incendio</h1>
+          <div className="mb-6 flex justify-center">
+            <Logo size="lg" />
+          </div>
           <p className="text-xl text-gray-600">Sistema de Gestão de Problemas em Obra</p>
         </div>
 

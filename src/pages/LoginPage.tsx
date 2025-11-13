@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { login, getCurrentUser, onAuthChange } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -42,14 +43,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-lg shadow-xl p-8">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Imagem de fundo com blur */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          backgroundImage: 'url(/bg/bg-login.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed',
+          filter: 'blur(2px)',
+          transform: 'scale(1.1)' // Escalar ligeiramente para evitar bordas brancas do blur
+        }}
+      ></div>
+      
+      {/* Overlay escuro para melhorar legibilidade do card */}
+      <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+      
+      <div className="max-w-md w-full relative z-10">
+        <div className="bg-white rounded-lg shadow-xl p-8 backdrop-blur-sm bg-opacity-95">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-500 rounded-full mb-4">
-              <LogIn className="text-white" size={32} />
+            <div className="mb-6 flex justify-center">
+              <Logo size="lg" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Sistema Incêndio</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Sistema de Gestão</h1>
             <p className="text-gray-600">Faça login para continuar</p>
           </div>
 
@@ -119,10 +137,6 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-
-        <p className="text-center text-sm text-gray-600 mt-6">
-          Sistema colaborativo de gestão de problemas em obra
-        </p>
       </div>
     </div>
   );

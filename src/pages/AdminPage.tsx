@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { signup } from '../services/auth';
 import { UserPlus, Mail, Lock, CheckCircle, XCircle, User as UserIcon } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function AdminPage() {
   const [nome, setNome] = useState('');
@@ -50,13 +51,16 @@ export default function AdminPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow-xl p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500 rounded-full mb-4">
-            <UserPlus className="text-white" size={32} />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Área Administrativa</h1>
-          <p className="text-gray-600">Criar contas para novos usuários</p>
-        </div>
+               <div className="text-center mb-8">
+                 <div className="mb-4 flex justify-center">
+                   <Logo size="md" />
+                 </div>
+                 <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500 rounded-full mb-4">
+                   <UserPlus className="text-white" size={32} />
+                 </div>
+                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Área Administrativa</h1>
+                 <p className="text-gray-600">Criar contas para novos usuários</p>
+               </div>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex items-center gap-2">
