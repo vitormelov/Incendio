@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Incendio } from '../types';
 import { getDisciplinaName, getDisciplinaColor, getSeveridadeName } from '../utils/colors';
@@ -5,6 +6,9 @@ import { getSetorById } from '../config/setores';
 import { format } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 import { differenceInDays } from 'date-fns';
+import { getUserName } from '../services/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 interface IncendioDetailsProps {
   incendio: Incendio;
@@ -15,6 +19,47 @@ interface IncendioDetailsProps {
 export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioDetailsProps) {
   const setor = getSetorById(incendio.setor);
   const color = getDisciplinaColor(incendio.disciplina);
+  const [criadorNome, setCriadorNome] = useState<string>('Carregando...');
+  
+  useEffect(() => {
+    // Buscar nome do criador
+    const loadCriadorNome = async () => {
+      if (incendio.criadoPor) {
+        // Verificar se é um UID (geralmente mais longo) ou email
+        if (incendio.criadoPor.includes('@')) {
+          // É email - se for admin, mostrar nome fixo
+          if (incendio.criadoPor === 'projetos@preferencial.eng.br') {
+            setCriadorNome('Vitor Viana');
+          } else {
+            setCriadorNome(incendio.criadoPor);
+          }
+        } else {
+          // É UID, buscar nome no Firestore
+          const nome = await getUserName(incendio.criadoPor);
+          // Verificar se é admin pelo nome retornado (pode vir do Firestore também)
+          if (nome === 'Vitor Viana' || !nome) {
+            // Tentar buscar email também para verificar se é admin
+            try {
+              const userDoc = await getDoc(doc(db, 'users', incendio.criadoPor));
+              if (userDoc.exists() && userDoc.data().email === 'projetos@preferencial.eng.br') {
+                setCriadorNome('Vitor Viana');
+              } else {
+                setCriadorNome(nome || 'Usuário desconhecido');
+              }
+            } catch (error) {
+              setCriadorNome(nome || 'Usuário desconhecido');
+            }
+          } else {
+            setCriadorNome(nome);
+          }
+        }
+      } else {
+        setCriadorNome('Usuário desconhecido');
+      }
+    };
+
+    loadCriadorNome();
+  }, [incendio.criadoPor]);
   
   // Calcular atraso (apenas para incêndios abertos com data de apagar)
   const hoje = new Date();
@@ -162,10 +207,8 @@ export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioD
           {/* Informações Adicionais */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Coordenadas</label>
-              <p className="text-sm text-gray-600">
-                X: {incendio.coordenadas.x.toFixed(2)}%, Y: {incendio.coordenadas.y.toFixed(2)}%, Página: {incendio.coordenadas.page}
-              </p>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Criador</label>
+              <p className="text-sm font-medium text-gray-900">{criadorNome}</p>
             </div>
 
             <div>
