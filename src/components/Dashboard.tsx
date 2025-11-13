@@ -24,9 +24,11 @@ export default function Dashboard({ incendios }: DashboardProps) {
 
     const porDisciplina = {
       civil: abertos.filter(i => i.disciplina === 'civil').length,
-      eletrica: abertos.filter(i => i.disciplina === 'eletrica').length,
-      combate: abertos.filter(i => i.disciplina === 'combate').length,
-      climatizacao: abertos.filter(i => i.disciplina === 'climatizacao').length,
+      instalacoes: abertos.filter(i => i.disciplina === 'instalacoes').length,
+      equipamentos: abertos.filter(i => i.disciplina === 'equipamentos').length,
+      estrutural: abertos.filter(i => i.disciplina === 'estrutural').length,
+      impermeabilizacao: abertos.filter(i => i.disciplina === 'impermeabilizacao').length,
+      ambientacao: abertos.filter(i => i.disciplina === 'ambientacao').length,
     };
 
     const porSeveridade = {
@@ -135,7 +137,7 @@ export default function Dashboard({ incendios }: DashboardProps) {
       {/* Distribuição por Disciplina */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-bold mb-4">Incêndios Abertos por Disciplina</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {Object.entries(stats.porDisciplina).map(([disciplina, count]) => (
             <div key={disciplina} className="text-center">
               <p className="text-2xl font-bold">{count}</p>

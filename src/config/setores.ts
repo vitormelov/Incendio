@@ -7,6 +7,11 @@ export const setores: Setor[] = [
     nome: 'Setor Azul',
     pdfPath: '/pdfs/setor-azul.pdf'
   },
+  {
+    id: 'setor-amarelo',
+    nome: 'Setor Amarelo',
+    pdfPath: '/pdfs/setor-amarelo.pdf'
+  },
 ];
 
 export const getSetorById = (id: string): Setor | undefined => {

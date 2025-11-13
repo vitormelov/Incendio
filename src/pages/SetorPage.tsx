@@ -6,6 +6,7 @@ import IncendioList from '../components/IncendioList';
 import { Incendio } from '../types';
 import { getSetorById } from '../config/setores';
 import { getIncendios, createIncendio, updateIncendio, deleteIncendio } from '../services/firestore';
+import { getCurrentUser } from '../services/auth';
 import { List, Layout } from 'lucide-react';
 
 export default function SetorPage() {
@@ -49,10 +50,17 @@ export default function SetorPage() {
 
   const handleSave = async (incendioData: Omit<Incendio, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const user = getCurrentUser();
+      const dataToSave = {
+        ...incendioData,
+        // Ao criar, adiciona o UID do usuário que criou. Ao editar, mantém o criadoPor original
+        ...(selectedIncendio ? {} : { criadoPor: user?.uid || null }),
+      };
+
       if (selectedIncendio) {
-        await updateIncendio(selectedIncendio.id, incendioData);
+        await updateIncendio(selectedIncendio.id, dataToSave);
       } else {
-        await createIncendio(incendioData);
+        await createIncendio(dataToSave);
       }
       await loadIncendios();
       setShowForm(false);
@@ -143,6 +151,7 @@ export default function SetorPage() {
           incendio={selectedIncendio}
           coordenadas={formCoordenadas}
           onSave={handleSave}
+          onDelete={handleDelete}
           onCancel={() => {
             setShowForm(false);
             setSelectedIncendio(null);

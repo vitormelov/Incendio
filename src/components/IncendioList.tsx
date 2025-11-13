@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Trash2, Edit, Filter } from 'lucide-react';
+import { Edit, Filter, Eye } from 'lucide-react';
 import { Incendio, Disciplina, Severidade } from '../types';
 import { getDisciplinaName, getSeveridadeName, getDisciplinaColor } from '../utils/colors';
-import { format } from 'date-fns';
+import { getSetorById } from '../config/setores';
+import { format, differenceInDays } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
+import IncendioDetails from './IncendioDetails';
 
 interface IncendioListProps {
   incendios: Incendio[];
@@ -19,6 +21,8 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
     isGargalo: '' as boolean | '',
     apenasAbertos: false,
   });
+  const [selectedIncendio, setSelectedIncendio] = useState<Incendio | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const filteredIncendios = incendios.filter(inc => {
     if (setor && inc.setor !== setor) return false;
@@ -29,9 +33,37 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
     return true;
   });
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este incêndio?')) {
-      onDelete(id);
+  const calcularAtraso = (incendio: Incendio): number | null => {
+    // Calcular atraso apenas para incêndios abertos com data de apagar
+    if (!incendio.dataPretendeApagar || incendio.dataFoiApagada) return null;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // Normalizar para comparar apenas datas
+    const dataApagar = new Date(incendio.dataPretendeApagar);
+    dataApagar.setHours(0, 0, 0, 0);
+    return differenceInDays(hoje, dataApagar);
+  };
+
+  const getStatus = (incendio: Incendio): { texto: string; cor: string } => {
+    if (incendio.dataFoiApagada) {
+      return { texto: 'Fechado', cor: 'bg-green-100 text-green-800' };
+    }
+    const atraso = calcularAtraso(incendio);
+    // Se atraso > 0 = Atrasado, se atraso <= 0 = Aberto
+    if (atraso !== null && atraso > 0) {
+      return { texto: 'Atrasado', cor: 'bg-red-100 text-red-800' };
+    }
+    return { texto: 'Aberto', cor: 'bg-yellow-100 text-yellow-800' };
+  };
+
+  const handleView = (incendio: Incendio) => {
+    setSelectedIncendio(incendio);
+    setShowDetails(true);
+  };
+
+  const handleEditFromDetails = () => {
+    if (selectedIncendio) {
+      setShowDetails(false);
+      onEdit(selectedIncendio);
     }
   };
 
@@ -55,9 +87,11 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
           >
             <option value="">Todas as Disciplinas</option>
             <option value="civil">{getDisciplinaName('civil')}</option>
-            <option value="eletrica">{getDisciplinaName('eletrica')}</option>
-            <option value="combate">{getDisciplinaName('combate')}</option>
-            <option value="climatizacao">{getDisciplinaName('climatizacao')}</option>
+            <option value="instalacoes">{getDisciplinaName('instalacoes')}</option>
+            <option value="equipamentos">{getDisciplinaName('equipamentos')}</option>
+            <option value="estrutural">{getDisciplinaName('estrutural')}</option>
+            <option value="impermeabilizacao">{getDisciplinaName('impermeabilizacao')}</option>
+            <option value="ambientacao">{getDisciplinaName('ambientacao')}</option>
           </select>
 
           <select
@@ -96,65 +130,81 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Disciplina</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Severidade</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Responsável</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Setor</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Disciplina</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severidade</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsável</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data Incêndio</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Atraso</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredIncendios.map((incendio) => {
               const color = getDisciplinaColor(incendio.disciplina);
-              const isAberto = !incendio.dataFoiApagada;
+              const setor = getSetorById(incendio.setor);
+              const atraso = calcularAtraso(incendio);
+              const status = getStatus(incendio);
               
               return (
                 <tr key={incendio.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2">
-                    <span
-                      className="inline-block px-2 py-1 rounded text-xs font-medium text-white"
-                      style={{ backgroundColor: color }}
-                    >
-                      {getDisciplinaName(incendio.disciplina)}
-                    </span>
-                    {incendio.isGargalo && (
-                      <span className="ml-2 px-2 py-1 bg-black text-white text-xs rounded">Gargalo</span>
-                    )}
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    {setor?.nome || incendio.setor}
                   </td>
-                  <td className="px-4 py-2">
-                    <span className="font-medium">{incendio.severidade} - {getSeveridadeName(incendio.severidade)}</span>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded"
+                        style={{ backgroundColor: color }}
+                      ></div>
+                      <span
+                        className="inline-block px-2 py-1 rounded text-xs font-medium text-white"
+                        style={{ backgroundColor: color }}
+                      >
+                        {getDisciplinaName(incendio.disciplina)}
+                      </span>
+                      {incendio.isGargalo && (
+                        <span className="px-2 py-1 bg-black text-white text-xs rounded">Gargalo</span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-4 py-2 text-sm">{incendio.descricao}</td>
-                  <td className="px-4 py-2 text-sm">{incendio.responsavel}</td>
-                  <td className="px-4 py-2 text-sm">
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-sm">{incendio.severidade} - {getSeveridadeName(incendio.severidade)}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{incendio.responsavel}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {format(new Date(incendio.dataAconteceu), 'dd/MM/yyyy', { locale: ptBR })}
                   </td>
-                  <td className="px-4 py-2">
-                    {isAberto ? (
-                      <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">Aberto</span>
-                    ) : (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-                        Fechado em {format(new Date(incendio.dataFoiApagada!), 'dd/MM/yyyy', { locale: ptBR })}
+                  <td className="px-4 py-3 text-sm">
+                    {atraso !== null ? (
+                      <span className={`font-medium ${atraso > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                        {atraso > 0 ? '+' : ''}{atraso} dia(s)
                       </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 text-xs rounded font-medium ${status.cor}`}>
+                      {status.texto}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
-                        onClick={() => onEdit(incendio)}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Editar"
+                        onClick={() => handleView(incendio)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Visualizar"
                       >
-                        <Edit size={16} />
+                        <Eye size={18} />
                       </button>
                       <button
-                        onClick={() => handleDelete(incendio.id)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                        title="Excluir"
+                        onClick={() => onEdit(incendio)}
+                        className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                        title="Editar"
                       >
-                        <Trash2 size={16} />
+                        <Edit size={18} />
                       </button>
                     </div>
                   </td>
@@ -170,6 +220,18 @@ export default function IncendioList({ incendios, onEdit, onDelete, setor }: Inc
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhes */}
+      {showDetails && selectedIncendio && (
+        <IncendioDetails
+          incendio={selectedIncendio}
+          onClose={() => {
+            setShowDetails(false);
+            setSelectedIncendio(null);
+          }}
+          onEdit={handleEditFromDetails}
+        />
+      )}
     </div>
   );
 }

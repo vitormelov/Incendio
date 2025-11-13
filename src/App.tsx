@@ -1,22 +1,38 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SetorPage from './pages/SetorPage';
+import LoginPage from './pages/LoginPage';
+import AdminPage from './pages/AdminPage';
 import Dashboard from './components/Dashboard';
 import IncendioList from './components/IncendioList';
 import IncendioForm from './components/IncendioForm';
+import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio } from './services/firestore';
-import { Home, BarChart3, List } from 'lucide-react';
+import { getCurrentUser, logout, onAuthChange, isAdmin } from './services/auth';
+import { Home, BarChart3, List, LogOut, User, Shield } from 'lucide-react';
+import { User as FirebaseUser } from 'firebase/auth';
 
 function App() {
   const [allIncendios, setAllIncendios] = useState<Incendio[]>([]);
   const [selectedIncendio, setSelectedIncendio] = useState<Incendio | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [user, setUser] = useState<FirebaseUser | null>(getCurrentUser());
 
   useEffect(() => {
-    loadAllIncendios();
+    const unsubscribe = onAuthChange((user) => {
+      setUser(user);
+    });
+    return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadAllIncendios();
+    }
+  }, [user]);
 
   const loadAllIncendios = async () => {
     try {
@@ -27,96 +43,173 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
-        <nav className="bg-white border-b shadow-sm">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
-              <Link to="/" className="text-2xl font-bold text-gray-900">
-                Incendio
-              </Link>
-              <div className="flex gap-4">
-                <Link
-                  to="/"
-                  className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-                >
-                  <Home size={20} />
-                  <span>Home</span>
+        {user && (
+          /* Navigation */
+          <nav className="bg-white border-b shadow-sm">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="flex items-center justify-between h-16">
+                <Link to="/" className="text-2xl font-bold text-gray-900">
+                  Incendio
                 </Link>
-                <Link
-                  to="/dashboard"
-                  className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-                >
-                  <BarChart3 size={20} />
-                  <span>Dashboard</span>
-                </Link>
-                <Link
-                  to="/todos-incendios"
-                  className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-                >
-                  <List size={20} />
-                  <span>Todos os Incêndios</span>
-                </Link>
+                <div className="flex items-center gap-4">
+                  <div className="flex gap-4">
+                    <Link
+                      to="/"
+                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+                    >
+                      <Home size={20} />
+                      <span>Home</span>
+                    </Link>
+                    <Link
+                      to="/dashboard"
+                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+                    >
+                      <BarChart3 size={20} />
+                      <span>Dashboard</span>
+                    </Link>
+                    <Link
+                      to="/todos-incendios"
+                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+                    >
+                      <List size={20} />
+                      <span>Todos os Incêndios</span>
+                    </Link>
+                    {isAdmin(user) && (
+                      <Link
+                        to="/admin"
+                        className="flex items-center gap-2 px-4 py-2 text-purple-700 hover:bg-purple-50 rounded border border-purple-200"
+                      >
+                        <Shield size={20} />
+                        <span>Admin</span>
+                      </Link>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 pl-4 border-l border-gray-300">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <User size={18} />
+                      <span className="max-w-[200px] truncate">{user.email}</span>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Sair"
+                    >
+                      <LogOut size={18} />
+                      <span>Sair</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>
+        )}
 
         {/* Routes */}
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/setor/:setorId" element={<SetorPage />} />
-          <Route 
-            path="/dashboard" 
-            element={<Dashboard incendios={allIncendios} />} 
-          />
-          <Route 
-            path="/todos-incendios" 
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/admin"
             element={
-              <div className="max-w-7xl mx-auto px-4 py-8">
-                <IncendioList
-                  incendios={allIncendios}
-                  onEdit={(inc) => {
-                    setSelectedIncendio(inc);
-                    setShowForm(true);
-                  }}
-                  onDelete={async (id) => {
-                    const { deleteIncendio } = await import('./services/firestore');
-                    try {
-                      await deleteIncendio(id);
-                      await loadAllIncendios();
-                    } catch (error) {
-                      console.error('Erro ao excluir:', error);
-                      alert('Erro ao excluir incêndio');
-                    }
-                  }}
-                />
-                {showForm && selectedIncendio && (
-                  <IncendioForm
-                    incendio={selectedIncendio}
-                    coordenadas={null}
-                    onSave={async (incendioData) => {
+              <ProtectedAdminRoute>
+                <AdminPage />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/setor/:setorId"
+            element={
+              <ProtectedRoute>
+                <SetorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard incendios={allIncendios} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/todos-incendios"
+            element={
+              <ProtectedRoute>
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                  <IncendioList
+                    incendios={allIncendios}
+                    onEdit={(inc) => {
+                      setSelectedIncendio(inc);
+                      setShowForm(true);
+                    }}
+                    onDelete={async (id) => {
+                      const { deleteIncendio } = await import('./services/firestore');
                       try {
-                        await updateIncendio(selectedIncendio.id, incendioData);
+                        await deleteIncendio(id);
                         await loadAllIncendios();
-                        setShowForm(false);
-                        setSelectedIncendio(null);
                       } catch (error) {
-                        console.error('Erro ao salvar:', error);
-                        alert('Erro ao salvar incêndio');
+                        console.error('Erro ao excluir:', error);
+                        alert('Erro ao excluir incêndio');
                       }
                     }}
-                    onCancel={() => {
-                      setShowForm(false);
-                      setSelectedIncendio(null);
-                    }}
-                    setor={selectedIncendio.setor}
                   />
-                )}
-              </div>
-            } 
+                  {showForm && selectedIncendio && (
+                    <IncendioForm
+                      incendio={selectedIncendio}
+                      coordenadas={null}
+                      onSave={async (incendioData) => {
+                        try {
+                          await updateIncendio(selectedIncendio.id, incendioData);
+                          await loadAllIncendios();
+                          setShowForm(false);
+                          setSelectedIncendio(null);
+                        } catch (error) {
+                          console.error('Erro ao salvar:', error);
+                          alert('Erro ao salvar incêndio');
+                        }
+                      }}
+                      onDelete={async (id) => {
+                        const { deleteIncendio } = await import('./services/firestore');
+                        try {
+                          await deleteIncendio(id);
+                          await loadAllIncendios();
+                          setShowForm(false);
+                          setSelectedIncendio(null);
+                        } catch (error) {
+                          console.error('Erro ao excluir:', error);
+                          alert('Erro ao excluir incêndio');
+                        }
+                      }}
+                      onCancel={() => {
+                        setShowForm(false);
+                        setSelectedIncendio(null);
+                      }}
+                      setor={selectedIncendio.setor}
+                    />
+                  )}
+                </div>
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </div>

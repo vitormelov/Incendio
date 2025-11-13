@@ -15,6 +15,20 @@ import { db } from '../firebase/config';
 import { Incendio, Disciplina, Severidade } from '../types';
 
 const INCENDIOS_COLLECTION = 'incendios';
+const USERS_COLLECTION = 'users';
+
+export const getUserName = async (userId: string): Promise<string | null> => {
+  try {
+    const userDoc = await getDoc(doc(db, USERS_COLLECTION, userId));
+    if (userDoc.exists()) {
+      return userDoc.data().nome || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Erro ao buscar nome do usuário:', error);
+    return null;
+  }
+};
 
 export const getIncendios = async (setor?: string): Promise<Incendio[]> => {
   let q;
