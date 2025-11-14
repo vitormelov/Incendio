@@ -53,7 +53,6 @@ export default function LoginPage() {
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
           backgroundAttachment: 'fixed',
-          filter: 'blur(2px)',
           transform: 'scale(1.1)' // Escalar ligeiramente para evitar bordas brancas do blur
         }}
       ></div>
@@ -67,7 +66,7 @@ export default function LoginPage() {
             <div className="mb-6 flex justify-center">
               <Logo size="lg" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Sistema de Gestão</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Sistema de gestão colaborativo</h1>
             <p className="text-gray-600">Faça login para continuar</p>
           </div>
 
