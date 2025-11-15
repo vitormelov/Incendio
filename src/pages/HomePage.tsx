@@ -1,13 +1,9 @@
 import { Link } from 'react-router-dom';
 import { setores } from '../config/setores';
 import { FileText } from 'lucide-react';
-import { useEffect } from 'react';
 import Logo from '../components/Logo';
 
 export default function HomePage() {
-  useEffect(() => {
-    console.log('Setores carregados:', setores);
-  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">

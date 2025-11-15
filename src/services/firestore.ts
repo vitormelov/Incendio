@@ -140,6 +140,26 @@ export const createIncendio = async (incendio: Omit<Incendio, 'id' | 'createdAt'
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
+
+  // Buscar o incêndio criado para enviar WhatsApp
+  const incendioCriado: Incendio = {
+    id: docRef.id,
+    ...incendio,
+    dataAconteceu: incendio.dataAconteceu,
+    dataPretendeApagar: incendio.dataPretendeApagar || null,
+    dataFoiApagada: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Enviar mensagem WhatsApp (não bloqueia a criação se falhar)
+  try {
+    const { sendIncendioWhatsAppMessage } = await import('./whatsapp');
+    await sendIncendioWhatsAppMessage(incendioCriado);
+  } catch (error) {
+    console.error('Erro ao enviar WhatsApp (não bloqueia criação):', error);
+  }
+
   return docRef.id;
 };
 

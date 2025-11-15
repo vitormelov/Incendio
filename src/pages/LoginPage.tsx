@@ -52,8 +52,7 @@ export default function LoginPage() {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed',
-          transform: 'scale(1.1)' // Escalar ligeiramente para evitar bordas brancas do blur
+          backgroundAttachment: 'fixed'
         }}
       ></div>
       

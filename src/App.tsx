@@ -12,7 +12,7 @@ import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import Logo from './components/Logo';
 import { useState, useEffect } from 'react';
 import { Incendio } from './types';
-import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail } from './services/firestore';
+import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
 import { getCurrentUser, logout, onAuthChange, isAdmin } from './services/auth';
 import { Home, BarChart3, List, LogOut, User, Shield, CheckCircle } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
@@ -193,7 +193,6 @@ function App() {
                       setShowForm(true);
                     }}
                     onDelete={async (id) => {
-                      const { deleteIncendio } = await import('./services/firestore');
                       try {
                         await deleteIncendio(id);
                         await loadAllIncendios();
@@ -224,7 +223,6 @@ function App() {
                         }
                       }}
                       onDelete={async (id) => {
-                        const { deleteIncendio } = await import('./services/firestore');
                         try {
                           await deleteIncendio(id);
                           await loadAllIncendios();
