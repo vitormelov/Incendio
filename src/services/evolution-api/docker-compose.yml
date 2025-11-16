@@ -1,6 +1,6 @@
 services:
   evolution-api:
-    image: atendai/evolution-api:latest
+    image: evoapicloud/evolution-api:v2.3.4
     container_name: evolution-api
     restart: always
     ports:
@@ -12,8 +12,14 @@ services:
       - DATABASE_CONNECTION_URI=postgresql://evolution_user:evolution_pass@postgres:5432/evolution_db
       - REDIS_ENABLED=true
       - REDIS_URI=redis://redis:6379
+      - REDIS_CONNECTION_TIMEOUT=30000
+      - REDIS_RETRY_DELAY=5000
+      - REDIS_MAX_RETRIES=10
+      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_PREFIX_KEY=incendio_bot_
       - AUTHENTICATION_API_KEY=INCENDO_FACIL123
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - CONFIG_SESSION_PHONE_VERSION=2.3000.1029950210
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
@@ -27,6 +33,7 @@ services:
     image: redis:7-alpine
     container_name: evolution-redis
     restart: always
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --tcp-keepalive 60 --timeout 0
     volumes:
       - evolution_redis:/data
     healthcheck:
@@ -34,6 +41,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+      start_period: 10s
+    networks:
+      - default
 
   postgres:
     image: postgres:15-alpine
@@ -56,3 +66,7 @@ volumes:
   evolution_store:
   evolution_redis:
   evolution_postgres:
+
+networks:
+  default:
+    driver: bridge

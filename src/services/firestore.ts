@@ -152,13 +152,16 @@ export const createIncendio = async (incendio: Omit<Incendio, 'id' | 'createdAt'
     updatedAt: new Date().toISOString(),
   };
 
-  // Enviar mensagem WhatsApp (não bloqueia a criação se falhar)
-  try {
-    const { sendIncendioWhatsAppMessage } = await import('./whatsapp');
-    await sendIncendioWhatsAppMessage(incendioCriado);
-  } catch (error) {
-    console.error('Erro ao enviar WhatsApp (não bloqueia criação):', error);
-  }
+  // Enviar mensagem WhatsApp de forma assíncrona (não bloqueia a criação)
+  // Usar setTimeout para não bloquear o retorno da função
+  setTimeout(async () => {
+    try {
+      const { sendIncendioWhatsAppMessage } = await import('./whatsapp');
+      await sendIncendioWhatsAppMessage(incendioCriado);
+    } catch (error) {
+      console.error('Erro ao enviar WhatsApp (não bloqueia criação):', error);
+    }
+  }, 0);
 
   return docRef.id;
 };
