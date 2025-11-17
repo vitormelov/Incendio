@@ -102,7 +102,11 @@ ${incendio.descricao || 'Sem descrição'}
 
     // Enviar mensagem via Evolution API
     // Formato correto para Evolution API v2+
-    const apiUrl = `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
+    // Remover barra final da URL para evitar // duplo
+    const baseUrl = EVOLUTION_API_URL.endsWith('/') 
+      ? EVOLUTION_API_URL.slice(0, -1) 
+      : EVOLUTION_API_URL;
+    const apiUrl = `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
     console.log('📤 Enviando mensagem WhatsApp...', {
       url: apiUrl,
       groupId: WHATSAPP_GROUP_ID,
