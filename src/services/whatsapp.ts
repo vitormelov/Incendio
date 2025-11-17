@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 
 // Configurações da Evolution API (serão lidas de variáveis de ambiente)
-const EVOLUTION_API_URL = import.meta.env.VITE_EVOLUTION_API_URL || '';
+// Nota: EVOLUTION_API_URL não é mais necessária no frontend - usamos proxy do Vercel (/api/whatsapp/send)
 const EVOLUTION_API_KEY = import.meta.env.VITE_EVOLUTION_API_KEY || '';
 const EVOLUTION_INSTANCE_NAME = import.meta.env.VITE_EVOLUTION_INSTANCE_NAME || '';
 const WHATSAPP_GROUP_ID = import.meta.env.VITE_WHATSAPP_GROUP_ID || '';
@@ -18,19 +18,17 @@ const WHATSAPP_GROUP_ID = import.meta.env.VITE_WHATSAPP_GROUP_ID || '';
 export const sendIncendioWhatsAppMessage = async (incendio: Incendio): Promise<void> => {
   try {
     // Debug: Verificar variáveis de ambiente
-    console.log('🔍 Debug WhatsApp - Variáveis de ambiente:', {
-      EVOLUTION_API_URL,
-      EVOLUTION_API_KEY: EVOLUTION_API_KEY ? '***' : '',
+    console.log('🔍 Debug WhatsApp - Verificando configurações...', {
       EVOLUTION_INSTANCE_NAME,
       WHATSAPP_GROUP_ID,
+      temApiKey: !!EVOLUTION_API_KEY,
     });
 
-    // Verificar se as configurações estão disponíveis
-    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE_NAME || !WHATSAPP_GROUP_ID) {
+    // Verificar se as configurações básicas estão disponíveis
+    // Nota: EVOLUTION_API_URL não é mais necessária no frontend, pois usamos proxy do Vercel
+    if (!EVOLUTION_INSTANCE_NAME || !WHATSAPP_GROUP_ID) {
       console.warn('❌ Configurações do WhatsApp não encontradas. Mensagem não será enviada.');
       console.warn('Variáveis faltando:', {
-        EVOLUTION_API_URL: !EVOLUTION_API_URL,
-        EVOLUTION_API_KEY: !EVOLUTION_API_KEY,
         EVOLUTION_INSTANCE_NAME: !EVOLUTION_INSTANCE_NAME,
         WHATSAPP_GROUP_ID: !WHATSAPP_GROUP_ID,
       });
@@ -100,13 +98,14 @@ ${incendio.descricao || 'Sem descrição'}
 ━━━━━━━━━━━━━━━━━━━━
 📋 Sistema INCÊNDIO`);
 
-    // Enviar mensagem via Proxy do Vercel (evita problema de CORS)
-    // O proxy faz a requisição do lado do servidor, então não há bloqueio de CORS
+    // IMPORTANTE: Sempre usar o proxy do Vercel para evitar CORS
+    // O proxy faz a requisição do lado do servidor (sem problema de CORS)
     const apiUrl = '/api/whatsapp/send';
-    console.log('📤 Enviando mensagem WhatsApp via proxy...', {
+    console.log('📤 Enviando mensagem WhatsApp via proxy do Vercel...', {
       url: apiUrl,
-      groupId: WHATSAPP_GROUP_ID,
-      instanceName: EVOLUTION_INSTANCE_NAME,
+      grupo: WHATSAPP_GROUP_ID,
+      instancia: EVOLUTION_INSTANCE_NAME,
+      metodo: 'POST /api/whatsapp/send (proxy serverless)',
     });
 
     // Configurar timeout reduzido e fazer requisição de forma não-bloqueante
