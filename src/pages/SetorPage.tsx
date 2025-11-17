@@ -54,7 +54,7 @@ export default function SetorPage() {
       const dataToSave = {
         ...incendioData,
         // Ao criar, adiciona o UID do usuário que criou. Ao editar, mantém o criadoPor original
-        ...(selectedIncendio ? {} : { criadoPor: user?.uid || null }),
+        ...(selectedIncendio ? {} : { criadoPor: user?.uid || undefined }),
       };
 
       if (selectedIncendio) {

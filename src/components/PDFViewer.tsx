@@ -26,7 +26,6 @@ export default function PDFViewer({
   const [scale, setScale] = useState<number>(1.0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
-  const [pdfLoaded, setPdfLoaded] = useState<boolean>(false);
   const [pageWidth, setPageWidth] = useState<number>(800);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -42,7 +41,6 @@ export default function PDFViewer({
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setTotalPages(numPages);
-    setPdfLoaded(true);
   };
 
   const handleZoomIn = () => {
@@ -137,7 +135,6 @@ export default function PDFViewer({
               onLoadSuccess={onDocumentLoadSuccess}
               onLoadError={(error) => {
                 console.error('Erro ao carregar PDF:', error);
-                setPdfLoaded(true);
               }}
               loading={
                 <div className="flex items-center justify-center min-h-[800px]">
