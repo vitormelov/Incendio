@@ -54,11 +54,13 @@ export default function SetorPage() {
       
       // Garantir que criadoPor nunca seja null (converter null para undefined)
       const criadoPorValue = selectedIncendio 
-        ? (incendioData.criadoPor === null ? undefined : incendioData.criadoPor)
+        ? (incendioData.criadoPor === null || incendioData.criadoPor === undefined ? undefined : incendioData.criadoPor)
         : (user?.uid || undefined);
       
+      // Criar objeto sem criadoPor primeiro, depois adicionar com valor garantido
+      const { criadoPor: _, ...dataWithoutCriadoPor } = incendioData;
       const dataToSave = {
-        ...incendioData,
+        ...dataWithoutCriadoPor,
         criadoPor: criadoPorValue,
       };
 
