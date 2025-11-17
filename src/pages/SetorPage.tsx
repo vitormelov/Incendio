@@ -51,10 +51,15 @@ export default function SetorPage() {
   const handleSave = async (incendioData: Omit<Incendio, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       const user = getCurrentUser();
+      
+      // Garantir que criadoPor nunca seja null (converter null para undefined)
+      const criadoPorValue = selectedIncendio 
+        ? (incendioData.criadoPor === null ? undefined : incendioData.criadoPor)
+        : (user?.uid || undefined);
+      
       const dataToSave = {
         ...incendioData,
-        // Ao criar, adiciona o UID do usuário que criou. Ao editar, mantém o criadoPor original
-        ...(selectedIncendio ? {} : { criadoPor: user?.uid || undefined }),
+        criadoPor: criadoPorValue,
       };
 
       if (selectedIncendio) {
