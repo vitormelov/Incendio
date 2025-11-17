@@ -100,14 +100,10 @@ ${incendio.descricao || 'Sem descrição'}
 ━━━━━━━━━━━━━━━━━━━━
 📋 Sistema INCÊNDIO`);
 
-    // Enviar mensagem via Evolution API
-    // Formato correto para Evolution API v2+
-    // Remover barra final da URL para evitar // duplo
-    const baseUrl = EVOLUTION_API_URL.endsWith('/') 
-      ? EVOLUTION_API_URL.slice(0, -1) 
-      : EVOLUTION_API_URL;
-    const apiUrl = `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
-    console.log('📤 Enviando mensagem WhatsApp...', {
+    // Enviar mensagem via Proxy do Vercel (evita problema de CORS)
+    // O proxy faz a requisição do lado do servidor, então não há bloqueio de CORS
+    const apiUrl = '/api/whatsapp/send';
+    console.log('📤 Enviando mensagem WhatsApp via proxy...', {
       url: apiUrl,
       groupId: WHATSAPP_GROUP_ID,
       instanceName: EVOLUTION_INSTANCE_NAME,
@@ -118,6 +114,7 @@ ${incendio.descricao || 'Sem descrição'}
     const startTime = Date.now();
     
     // Usar Promise.race para garantir que não trave por muito tempo
+    // Agora fazemos requisição para o proxy do Vercel (mesmo domínio, sem CORS)
     const requestPromise = axios.post(
       apiUrl,
       {
@@ -127,7 +124,6 @@ ${incendio.descricao || 'Sem descrição'}
       {
         headers: {
           'Content-Type': 'application/json',
-          'apikey': EVOLUTION_API_KEY,
         },
         timeout: 10000, // 10 segundos de timeout (reduzido para não travar)
         validateStatus: (status) => status < 500, // Aceitar status < 500 sem lançar erro
