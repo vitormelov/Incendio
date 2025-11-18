@@ -1,0 +1,55 @@
+# Variáveis de Ambiente para Railway - Evolution API
+# Configure estas variáveis no Railway Dashboard → Settings → Variables
+
+# ============================================
+# OBRIGATÓRIAS
+# ============================================
+
+# URL do servidor (use a URL pública do Railway)
+SERVER_URL=https://incendio-production.up.railway.app
+
+# Chave de autenticação da API (pode ser qualquer string)
+AUTHENTICATION_API_KEY=INCENDO_FACIL123
+
+# ============================================
+# BANCO DE DADOS (OPCIONAL - pode desabilitar)
+# ============================================
+
+# Opção 1: DESABILITAR banco de dados (mais simples)
+DATABASE_ENABLED=false
+
+# Opção 2: USAR PostgreSQL (se você tiver um serviço PostgreSQL no Railway)
+# DATABASE_ENABLED=true
+# DATABASE_PROVIDER=postgresql
+# DATABASE_CONNECTION_URI=postgresql://usuario:senha@postgres.railway.internal:5432/railway
+# (Substitua usuario, senha e nome do banco pelos valores do seu serviço PostgreSQL no Railway)
+
+# ============================================
+# REDIS (OPCIONAL - pode desabilitar)
+# ============================================
+
+# Opção 1: DESABILITAR Redis (mais simples)
+REDIS_ENABLED=false
+
+# Opção 2: USAR Redis (se você tiver um serviço Redis no Railway)
+# REDIS_ENABLED=true
+# REDIS_URI=redis://default:senha@redis.railway.internal:6379
+# (Substitua senha pelo valor do seu serviço Redis no Railway)
+
+# ============================================
+# CORS (OBRIGATÓRIO para funcionar com Vercel)
+# ============================================
+
+CORS_ENABLED=true
+CORS_ORIGIN=*
+
+# ============================================
+# OUTRAS CONFIGURAÇÕES
+# ============================================
+
+# Expor instâncias na API de fetch
+AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+
+# Versão do telefone (padrão)
+CONFIG_SESSION_PHONE_VERSION=2.3000.1029950210
+

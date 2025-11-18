@@ -32,12 +32,48 @@ export default async function handler(req, res) {
       ? evolutionApiUrl.slice(0, -1) 
       : evolutionApiUrl;
     
+    // Primeiro, verificar se a instância existe
+    const checkInstanceUrl = `${baseUrl}/instance/fetchInstances`;
+    console.log('🔍 Verificando instâncias disponíveis...', {
+      url: checkInstanceUrl,
+      instanceName,
+    });
+
+    const checkResponse = await fetch(checkInstanceUrl, {
+      method: 'GET',
+      headers: {
+        'apikey': evolutionApiKey,
+      },
+    });
+
+    if (checkResponse.ok) {
+      const instances = await checkResponse.json();
+      console.log('📋 Instâncias disponíveis:', instances);
+      
+      // Verificar se a instância existe
+      const instanceExists = Array.isArray(instances) 
+        ? instances.some(inst => inst.instance?.instanceName === instanceName || inst.instanceName === instanceName)
+        : false;
+      
+      if (!instanceExists) {
+        console.error('❌ Instância não encontrada:', {
+          instanceName,
+          availableInstances: instances,
+        });
+        return res.status(404).json({ 
+          error: 'Instância não encontrada',
+          message: `A instância "${instanceName}" não existe. Instâncias disponíveis: ${JSON.stringify(instances)}`
+        });
+      }
+    }
+
     const apiUrl = `${baseUrl}/message/sendText/${instanceName}`;
 
     console.log('📤 Enviando mensagem WhatsApp via proxy...', {
       url: apiUrl,
       number,
       instanceName,
+      apiKeyLength: evolutionApiKey.length,
     });
 
     // Fazer requisição para Evolution API (do lado do servidor, sem problema de CORS)
