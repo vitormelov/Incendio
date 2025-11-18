@@ -48,23 +48,66 @@ export default async function handler(req, res) {
 
     if (checkResponse.ok) {
       const instances = await checkResponse.json();
-      console.log('📋 Instâncias disponíveis:', instances);
+      console.log('📋 Instâncias disponíveis (formato completo):', JSON.stringify(instances, null, 2));
       
-      // Verificar se a instância existe
-      const instanceExists = Array.isArray(instances) 
-        ? instances.some(inst => inst.instance?.instanceName === instanceName || inst.instanceName === instanceName)
-        : false;
+      // Verificar diferentes formatos de resposta da Evolution API
+      let instanceExists = false;
+      let instanceNames = [];
+      
+      if (Array.isArray(instances)) {
+        // Formato: [{ instance: { instanceName: "..." } }, ...]
+        instanceNames = instances.map(inst => {
+          if (inst.instance?.instanceName) return inst.instance.instanceName;
+          if (inst.instanceName) return inst.instanceName;
+          if (typeof inst === 'string') return inst;
+          return JSON.stringify(inst);
+        });
+        
+        instanceExists = instances.some(inst => {
+          const name = inst.instance?.instanceName || inst.instanceName || inst;
+          return String(name).toLowerCase() === String(instanceName).toLowerCase();
+        });
+      } else if (instances && typeof instances === 'object') {
+        // Formato: { data: [...] } ou similar
+        const data = instances.data || instances.instances || instances;
+        if (Array.isArray(data)) {
+          instanceNames = data.map(inst => {
+            if (inst.instance?.instanceName) return inst.instance.instanceName;
+            if (inst.instanceName) return inst.instanceName;
+            return JSON.stringify(inst);
+          });
+          instanceExists = data.some(inst => {
+            const name = inst.instance?.instanceName || inst.instanceName || inst;
+            return String(name).toLowerCase() === String(instanceName).toLowerCase();
+          });
+        }
+      }
+      
+      console.log('🔍 Verificação de instância:', {
+        procurada: instanceName,
+        encontradas: instanceNames,
+        existe: instanceExists,
+      });
       
       if (!instanceExists) {
         console.error('❌ Instância não encontrada:', {
           instanceName,
-          availableInstances: instances,
+          availableInstances: instanceNames,
+          fullResponse: instances,
         });
         return res.status(404).json({ 
           error: 'Instância não encontrada',
-          message: `A instância "${instanceName}" não existe. Instâncias disponíveis: ${JSON.stringify(instances)}`
+          message: `A instância "${instanceName}" não existe.`,
+          availableInstances: instanceNames,
+          fullResponse: instances
         });
       }
+    } else {
+      console.warn('⚠️ Não foi possível verificar instâncias:', {
+        status: checkResponse.status,
+        statusText: checkResponse.statusText,
+      });
+      // Continuar mesmo assim - pode ser que a API não suporte esse endpoint
     }
 
     const apiUrl = `${baseUrl}/message/sendText/${instanceName}`;
