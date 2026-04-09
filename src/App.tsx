@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
 import AdminPage from './pages/AdminPage';
 import IncendiosApagadosPage from './pages/IncendiosApagadosPage';
 import Dashboard from './components/Dashboard';
@@ -142,7 +141,6 @@ function App() {
         {/* Routes */}
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/criar-conta" element={<SignupPage />} />
           <Route
             path="/admin"
             element={

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { login, getCurrentUser, onAuthChange } from '../services/auth';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
 import Logo from '../components/Logo';
 
@@ -133,16 +133,6 @@ export default function LoginPage() {
                 </>
               )}
             </button>
-
-            <div className="pt-2 text-center">
-              <p className="text-sm text-gray-600 mb-3">Não tem conta?</p>
-              <Link
-                to="/criar-conta"
-                className="w-full inline-flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Criar conta
-              </Link>
-            </div>
           </form>
         </div>
       </div>
