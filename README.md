@@ -63,6 +63,14 @@ const firebaseConfig = {
 };
 ```
 
+### 2.1 Configurar regras do Firestore (evita “Missing or insufficient permissions”)
+
+No Firebase Console:
+
+1. Vá em **Firestore Database** → **Rules**
+2. Cole regras equivalentes ao arquivo `firestore.rules` deste repositório
+3. Clique em **Publish**
+
 ### 3. Configurar Setores e PDFs
 
 Edite `src/config/setores.ts` para adicionar seus setores e caminhos dos PDFs:

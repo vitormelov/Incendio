@@ -37,10 +37,29 @@ export const formatLocalDate = (date: Date): string => {
 };
 
 // Helper para converter Timestamp do Firestore para string YYYY-MM-DD no fuso local
-const timestampToLocalDateString = (timestamp: any): string | null => {
+const timestampToLocalDateString = (timestamp: unknown): string | null => {
   if (!timestamp) return null;
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return formatLocalDate(date);
+
+  if (timestamp instanceof Date) {
+    return formatLocalDate(timestamp);
+  }
+
+  if (
+    typeof timestamp === 'object' &&
+    timestamp !== null &&
+    'toDate' in timestamp &&
+    typeof (timestamp as { toDate?: unknown }).toDate === 'function'
+  ) {
+    const date = (timestamp as { toDate: () => Date }).toDate();
+    return formatLocalDate(date);
+  }
+
+  if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? null : formatLocalDate(date);
+  }
+
+  return null;
 };
 
 // Helper para converter string YYYY-MM-DD ou ISO para Timestamp
@@ -141,41 +160,20 @@ export const createIncendio = async (incendio: Omit<Incendio, 'id' | 'createdAt'
     updatedAt: Timestamp.now(),
   });
 
-  // Buscar o incêndio criado para enviar WhatsApp
-  const incendioCriado: Incendio = {
-    id: docRef.id,
-    ...incendio,
-    dataAconteceu: incendio.dataAconteceu,
-    dataPretendeApagar: incendio.dataPretendeApagar || null,
-    dataFoiApagada: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  // Enviar mensagem WhatsApp de forma assíncrona (não bloqueia a criação)
-  // Usar setTimeout para não bloquear o retorno da função
-  setTimeout(async () => {
-    try {
-      const { sendIncendioWhatsAppMessage } = await import('./whatsapp');
-      await sendIncendioWhatsAppMessage(incendioCriado);
-    } catch (error) {
-      console.error('Erro ao enviar WhatsApp (não bloqueia criação):', error);
-    }
-  }, 0);
-
   return docRef.id;
 };
 
 export const updateIncendio = async (id: string, incendio: Partial<Omit<Incendio, 'id' | 'createdAt'>>): Promise<void> => {
   const docRef = doc(db, INCENDIOS_COLLECTION, id);
-  const updateData: any = {
+  const updateData: Record<string, unknown> = {
     updatedAt: Timestamp.now(),
   };
   
   // Copiar outros campos que não são datas
-  Object.keys(incendio).forEach(key => {
+  Object.keys(incendio).forEach((key) => {
     if (key !== 'dataAconteceu' && key !== 'dataPretendeApagar' && key !== 'dataFoiApagada') {
-      updateData[key] = (incendio as any)[key];
+      const value = incendio[key as keyof typeof incendio];
+      updateData[key] = value;
     }
   });
   
