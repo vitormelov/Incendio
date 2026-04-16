@@ -3,6 +3,8 @@ import HomePage from './pages/HomePage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
+import AdminCollaboratorsPage from './pages/AdminCollaboratorsPage';
+import AdminNewCollaboratorPage from './pages/AdminNewCollaboratorPage';
 import IncendiosApagadosPage from './pages/IncendiosApagadosPage';
 import Dashboard from './components/Dashboard';
 import IncendioList from './components/IncendioList';
@@ -146,6 +148,22 @@ function App() {
             element={
               <ProtectedAdminRoute>
                 <AdminPage />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/colaboradores"
+            element={
+              <ProtectedAdminRoute>
+                <AdminCollaboratorsPage />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/novo-colaborador"
+            element={
+              <ProtectedAdminRoute>
+                <AdminNewCollaboratorPage />
               </ProtectedAdminRoute>
             }
           />

@@ -12,7 +12,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Incendio, Disciplina, Severidade } from '../types';
+import { Incendio, Disciplina, Severidade, Collaborator, UserPermission } from '../types';
 
 const INCENDIOS_COLLECTION = 'incendios';
 const USERS_COLLECTION = 'users';
@@ -95,6 +95,43 @@ export const getUserNameByEmail = (email: string | null | undefined): string => 
     return 'Vitor Viana';
   }
   return email || 'Usuário';
+};
+
+export const getCollaborators = async (): Promise<Collaborator[]> => {
+  const querySnapshot = await getDocs(collection(db, USERS_COLLECTION));
+
+  return querySnapshot.docs
+    .map((snapshot) => {
+      const data = snapshot.data();
+      const permissions: UserPermission[] = Array.isArray(data.permissions)
+        ? data.permissions.filter((permission): permission is UserPermission => permission === 'colaborador')
+        : ['colaborador'];
+
+      return {
+        id: snapshot.id,
+        nome: data.nome || '',
+        email: data.email || '',
+        permissions,
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
+      };
+    })
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+};
+
+export const deleteCollaborator = async (userId: string): Promise<void> => {
+  await deleteDoc(doc(db, USERS_COLLECTION, userId));
+};
+
+export const updateCollaborator = async (
+  userId: string,
+  data: Pick<Collaborator, 'nome' | 'permissions'>
+): Promise<void> => {
+  await updateDoc(doc(db, USERS_COLLECTION, userId), {
+    nome: data.nome,
+    permissions: data.permissions,
+    updatedAt: new Date().toISOString(),
+  });
 };
 
 export const getIncendios = async (setor?: string): Promise<Incendio[]> => {

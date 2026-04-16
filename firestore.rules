@@ -5,12 +5,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == 'projetos@preferencial.eng.br';
+    }
+
     // Usuários
     match /users/{userId} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.auth.uid == userId;
-      allow update: if signedIn() && request.auth.uid == userId;
-      allow delete: if false;
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow delete: if isAdmin();
     }
 
     // Incêndios

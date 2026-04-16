@@ -30,3 +30,14 @@ export interface Setor {
   pdfPath: string;
 }
 
+export type UserPermission = 'colaborador';
+
+export interface Collaborator {
+  id: string;
+  nome: string;
+  email: string;
+  permissions: UserPermission[];
+  createdAt: string | null;
+  updatedAt?: string | null;
+}
+

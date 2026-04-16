@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyAQxVKVzpnjIOexdz-8Qu3gD-SYS9BUb68",
   authDomain: "incendio-77357.firebaseapp.com",
   projectId: "incendio-77357",
