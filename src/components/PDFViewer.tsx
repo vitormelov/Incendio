@@ -9,7 +9,7 @@ import { getDisciplinaColor } from '../utils/colors';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs`;
 
 interface PDFViewerProps {
-  pdfPath: string;
+  pdfPath: string | null;
   incendios: Incendio[];
   onAddMark: (x: number, y: number, page: number) => void;
   onMarkClick: (incendio: Incendio) => void;
@@ -75,6 +75,21 @@ export default function PDFViewer({
   }, [incendios, currentPage, onAddMark, onMarkClick]);
 
   const currentPageIncendios = incendios.filter(i => i.coordenadas.page === currentPage);
+
+  if (!pdfPath) {
+    return (
+      <div className="flex flex-col h-full bg-gray-100">
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="max-w-lg w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+            <p className="text-lg font-semibold text-gray-900 mb-2">PDF não disponível</p>
+            <p className="text-gray-600">
+              Este setor está cadastrado, mas ainda não possui uma planta/PDF associado.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-gray-100">

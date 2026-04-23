@@ -27,7 +27,13 @@ export interface Incendio {
 export interface Setor {
   id: string;
   nome: string;
-  pdfPath: string;
+  pdfPath: string | null;
+}
+
+export interface Obra {
+  id: string;
+  nome: string;
+  setores: Setor[];
 }
 
 export type UserPermission = 'colaborador';

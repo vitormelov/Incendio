@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import HomePage from './pages/HomePage';
+import ObraPage from './pages/ObraPage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
@@ -172,6 +173,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/obra/:obraId"
+            element={
+              <ProtectedRoute>
+                <ObraPage />
               </ProtectedRoute>
             }
           />

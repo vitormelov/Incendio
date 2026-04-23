@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { setores } from '../config/setores';
-import { FileText } from 'lucide-react';
+import { obras } from '../config/setores';
+import { Building2 } from 'lucide-react';
 import Logo from '../components/Logo';
 
 export default function HomePage() {
@@ -16,19 +16,19 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {setores.map((setor) => (
+          {obras.map((obra) => (
             <Link
-              key={setor.id}
-              to={`/setor/${setor.id}`}
+              key={obra.id}
+              to={`/obra/${obra.id}`}
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
             >
               <div className="flex items-center gap-4">
                 <div className="bg-blue-100 p-3 rounded-lg">
-                  <FileText className="text-blue-600" size={32} />
+                  <Building2 className="text-blue-600" size={32} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{setor.nome}</h2>
-                  <p className="text-sm text-gray-600">Visualizar plantas e incêndios</p>
+                  <h2 className="text-xl font-bold text-gray-900">{obra.nome}</h2>
+                  <p className="text-sm text-gray-600">Escolher setores, plantas e incêndios</p>
                 </div>
               </div>
             </Link>
