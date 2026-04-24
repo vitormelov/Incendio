@@ -3,15 +3,14 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, FileText, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import Logo from '../components/Logo';
 import { getObraById } from '../config/setores';
-import { createObraNote, deleteObraNote, getObraNotes, getObraServices, updateObraNote } from '../services/firestore';
-import { ObraNote, ObraService } from '../types';
+import { createObraNote, deleteObraNote, getObraNotes, updateObraNote } from '../services/firestore';
+import { ObraNote } from '../types';
 import { getCurrentUser, isAdmin } from '../services/auth';
 
-type NoteDraft = Pick<ObraNote, 'serviceId' | 'numero' | 'data' | 'empresa' | 'descricao' | 'valor'>;
+type NoteDraft = Pick<ObraNote, 'numero' | 'data' | 'empresa' | 'descricao' | 'valor'>;
 type ModalMode = 'create' | 'edit';
 
 const emptyDraft: NoteDraft = {
-  serviceId: null,
   numero: '',
   data: '',
   empresa: '',
@@ -29,7 +28,6 @@ export default function ObraNotesPage() {
   const obra = obraId ? getObraById(obraId) : undefined;
   const userIsAdmin = useMemo(() => isAdmin(getCurrentUser()), []);
 
-  const [services, setServices] = useState<ObraService[]>([]);
   const [notes, setNotes] = useState<ObraNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -42,31 +40,15 @@ export default function ObraNotesPage() {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [draft, setDraft] = useState<NoteDraft>(emptyDraft);
 
-  const serviceById = useMemo(() => {
-    const map = new Map<string, ObraService>();
-    services.forEach((s) => map.set(s.id, s));
-    return map;
-  }, [services]);
-
-  const spentByServiceId = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const note of notes) {
-      if (!note.serviceId) continue;
-      totals.set(note.serviceId, (totals.get(note.serviceId) ?? 0) + (note.valor || 0));
-    }
-    return totals;
-  }, [notes]);
-
   const load = async () => {
     if (!obraId) return;
     try {
       setLoading(true);
       setError('');
-      const [servicesData, notesData] = await Promise.all([getObraServices(obraId), getObraNotes(obraId)]);
-      setServices(servicesData);
+      const notesData = await getObraNotes(obraId);
       setNotes(notesData);
     } catch (err) {
-      console.error('Erro ao carregar notas/serviços:', err);
+      console.error('Erro ao carregar notas:', err);
       setError('Não foi possível carregar as notas desta obra.');
     } finally {
       setLoading(false);
@@ -100,7 +82,6 @@ export default function ObraNotesPage() {
     setModalMode('edit');
     setActiveNoteId(note.id);
     setDraft({
-      serviceId: note.serviceId,
       numero: note.numero,
       data: note.data,
       empresa: note.empresa,
@@ -136,7 +117,7 @@ export default function ObraNotesPage() {
       if (modalMode === 'create') {
         await createObraNote({
           obraId,
-          serviceId: draft.serviceId ?? null,
+          serviceId: null,
           numero: draft.numero.trim(),
           data: draft.data.trim(),
           empresa: draft.empresa.trim(),
@@ -146,7 +127,7 @@ export default function ObraNotesPage() {
         setSuccess('Nota criada com sucesso.');
       } else if (activeNoteId) {
         await updateObraNote(activeNoteId, {
-          serviceId: draft.serviceId ?? null,
+          serviceId: null,
           numero: draft.numero.trim(),
           data: draft.data.trim(),
           empresa: draft.empresa.trim(),
@@ -261,71 +242,43 @@ export default function ObraNotesPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nota</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serviço</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saldo (serviço)</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {notes.map((note) => {
-                  const service = note.serviceId ? serviceById.get(note.serviceId) : undefined;
-                  const spent = note.serviceId ? spentByServiceId.get(note.serviceId) ?? 0 : 0;
-                  const budget = service?.verba ?? null;
-                  const saldo = budget === null ? null : budget - spent;
-
-                  return (
-                    <tr key={note.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{note.numero}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{note.data}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{note.empresa}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {service ? (
-                          <div>
-                            <div className="font-medium text-gray-900">{service.pacote}</div>
-                            <div className="text-xs text-gray-500">{service.descricao}</div>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                        {currencyFormatter.format(note.valor || 0)}
-                      </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
-                        {saldo === null ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <span className={saldo < 0 ? 'text-red-700 font-semibold' : 'text-emerald-700 font-semibold'}>
-                            {currencyFormatter.format(saldo)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(note)}
-                            disabled={!userIsAdmin}
-                            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                          >
-                            <Pencil size={16} className="mr-2" />
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleDelete(note)}
-                            disabled={!userIsAdmin || deletingId === note.id}
-                            className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                          >
-                            <Trash2 size={16} className="mr-2" />
-                            {deletingId === note.id ? 'Excluindo...' : 'Excluir'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {notes.map((note) => (
+                  <tr key={note.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{note.numero}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{note.data}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{note.empresa}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                      {currencyFormatter.format(note.valor || 0)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(note)}
+                          disabled={!userIsAdmin}
+                          className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <Pencil size={16} className="mr-2" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(note)}
+                          disabled={!userIsAdmin || deletingId === note.id}
+                          className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          <Trash2 size={16} className="mr-2" />
+                          {deletingId === note.id ? 'Excluindo...' : 'Excluir'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -376,23 +329,6 @@ export default function ObraNotesPage() {
                     disabled={!userIsAdmin || !!savingId}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Serviço (opcional)</label>
-                  <select
-                    value={draft.serviceId ?? ''}
-                    onChange={(e) => setDraft((c) => ({ ...c, serviceId: e.target.value ? e.target.value : null }))}
-                    disabled={!userIsAdmin || !!savingId}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
-                  >
-                    <option value="">Sem vínculo</option>
-                    {services.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.pacote} — {s.descricao}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 <div>

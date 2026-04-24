@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage';
 import ObraPage from './pages/ObraPage';
 import ObraServicesPage from './pages/ObraServicesPage';
 import ObraNotesPage from './pages/ObraNotesPage';
+import ObraGastosPage from './pages/ObraGastosPage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
@@ -199,6 +200,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ObraNotesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/obra/:obraId/gastos"
+            element={
+              <ProtectedRoute>
+                <ObraGastosPage />
               </ProtectedRoute>
             }
           />

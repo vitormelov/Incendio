@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, Receipt, Wrench } from 'lucide-react';
+import { ArrowLeft, Banknote, FileText, Receipt, Wrench } from 'lucide-react';
 import Logo from '../components/Logo';
 import { getObraById, getSetoresByObraId } from '../config/setores';
 
@@ -57,6 +57,13 @@ export default function ObraPage() {
             >
               <Receipt size={18} className="mr-2" />
               Notas
+            </Link>
+            <Link
+              to={`/obra/${obraId}/gastos`}
+              className="inline-flex items-center px-4 py-2 border border-indigo-200 rounded-md text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+            >
+              <Banknote size={18} className="mr-2" />
+              Gastos
             </Link>
             <Link
               to="/"
