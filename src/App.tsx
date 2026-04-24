@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ObraPage from './pages/ObraPage';
+import ObraServicesPage from './pages/ObraServicesPage';
+import ObraNotesPage from './pages/ObraNotesPage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
@@ -181,6 +183,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ObraPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/obra/:obraId/servicos"
+            element={
+              <ProtectedRoute>
+                <ObraServicesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/obra/:obraId/notas"
+            element={
+              <ProtectedRoute>
+                <ObraNotesPage />
               </ProtectedRoute>
             }
           />

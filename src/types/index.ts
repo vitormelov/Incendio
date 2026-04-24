@@ -36,6 +36,29 @@ export interface Obra {
   setores: Setor[];
 }
 
+export interface ObraService {
+  id: string;
+  obraId: string;
+  pacote: string;
+  descricao: string;
+  verba: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ObraNote {
+  id: string;
+  obraId: string;
+  serviceId: string | null;
+  numero: string;
+  data: string; // YYYY-MM-DD
+  empresa: string;
+  descricao: string;
+  valor: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type UserPermission = 'colaborador';
 
 export interface Collaborator {

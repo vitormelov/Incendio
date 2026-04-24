@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Edit, Filter, Eye, Check, Trash2 } from 'lucide-react';
 import { Incendio, Disciplina, Severidade } from '../types';
 import { getDisciplinaName, getSeveridadeName, getDisciplinaColor } from '../utils/colors';
-import { getSetorById, setores } from '../config/setores';
+import { getSetorById, getSetoresByObraId, obras, setores } from '../config/setores';
 import { format, differenceInDays } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 import IncendioDetails from './IncendioDetails';
@@ -36,6 +36,7 @@ export default function IncendioList({
   const user = getCurrentUser();
   const userIsAdmin = isAdmin(user);
   const [filters, setFilters] = useState({
+    obraId: '' as string | '',
     setor: '' as string | '',
     disciplina: '' as Disciplina | '',
     severidade: '' as Severidade | '',
@@ -71,6 +72,12 @@ export default function IncendioList({
   };
 
   const filteredIncendios = incendios.filter(inc => {
+    // Filtro por obra
+    if (!setor && filters.obraId) {
+      const setoresDaObra = getSetoresByObraId(filters.obraId).map((s) => s.id);
+      if (!setoresDaObra.includes(inc.setor)) return false;
+    }
+
     // Filtro por setor (se vier da prop ou do filtro)
     if (setor && inc.setor !== setor) return false;
     if (!setor && filters.setor && inc.setor !== filters.setor) return false;
@@ -129,7 +136,40 @@ export default function IncendioList({
         </div>
 
         {/* Filtros */}
-        <div className={`grid grid-cols-1 md:grid-cols-2 ${showStatusFilter ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3`}>
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 ${
+            !setor
+              ? showStatusFilter
+                ? 'lg:grid-cols-6'
+                : 'lg:grid-cols-5'
+              : showStatusFilter
+              ? 'lg:grid-cols-5'
+              : 'lg:grid-cols-4'
+          } gap-3`}
+        >
+          {/* Filtro por Obra */}
+          {!setor && (
+            <select
+              value={filters.obraId}
+              onChange={(e) => {
+                const obraId = e.target.value;
+                setFilters((current) => ({
+                  ...current,
+                  obraId,
+                  setor: '', // resetar setor para não ficar inválido quando trocar a obra
+                }));
+              }}
+              className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todas as Obras</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.nome}
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Filtro por Setor */}
           {!setor && (
             <select
@@ -138,8 +178,10 @@ export default function IncendioList({
               className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos os Setores</option>
-              {setores.map(s => (
-                <option key={s.id} value={s.id}>{s.nome}</option>
+              {(filters.obraId ? getSetoresByObraId(filters.obraId) : setores).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
               ))}
             </select>
           )}

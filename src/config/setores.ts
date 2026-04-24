@@ -67,7 +67,7 @@ const termacoSetores: Setor[] = [
   {
     id: 'termaco-geral',
     nome: 'Geral',
-    pdfPath: null,
+    pdfPath: '/pdfs/termaco/termaco.pdf',
   },
 ];
 

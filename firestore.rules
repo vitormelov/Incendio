@@ -24,6 +24,18 @@ service cloud.firestore {
       allow update: if signedIn();
       allow delete: if signedIn();
     }
+
+    // Serviços por obra (pacote/descrição/verba)
+    match /obraServices/{serviceId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Notas por obra (vinculadas opcionalmente a um serviço)
+    match /obraNotes/{noteId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
 

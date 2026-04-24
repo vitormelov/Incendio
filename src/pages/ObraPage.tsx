@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, FileText, Receipt, Wrench } from 'lucide-react';
 import Logo from '../components/Logo';
 import { getObraById, getSetoresByObraId } from '../config/setores';
 
@@ -43,13 +43,29 @@ export default function ObraPage() {
             </div>
           </div>
 
-          <Link
-            to="/"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft size={18} className="mr-2" />
-            Trocar obra
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              to={`/obra/${obraId}/servicos`}
+              className="inline-flex items-center px-4 py-2 border border-blue-200 rounded-md text-sm font-medium text-blue-700 hover:bg-blue-50"
+            >
+              <Wrench size={18} className="mr-2" />
+              Serviços
+            </Link>
+            <Link
+              to={`/obra/${obraId}/notas`}
+              className="inline-flex items-center px-4 py-2 border border-emerald-200 rounded-md text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            >
+              <Receipt size={18} className="mr-2" />
+              Notas
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft size={18} className="mr-2" />
+              Trocar obra
+            </Link>
+          </div>
         </div>
 
         {setores.length === 0 ? (

@@ -12,10 +12,12 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Incendio, Disciplina, Severidade, Collaborator, UserPermission } from '../types';
+import { Incendio, Disciplina, Severidade, Collaborator, ObraNote, ObraService, UserPermission } from '../types';
 
 const INCENDIOS_COLLECTION = 'incendios';
 const USERS_COLLECTION = 'users';
+const OBRA_SERVICES_COLLECTION = 'obraServices';
+const OBRA_NOTES_COLLECTION = 'obraNotes';
 
 // Helper para converter string de data (YYYY-MM-DD) para Date no fuso local
 const parseLocalDate = (dateString: string): Date => {
@@ -229,6 +231,121 @@ export const updateIncendio = async (id: string, incendio: Partial<Omit<Incendio
 
 export const deleteIncendio = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, INCENDIOS_COLLECTION, id));
+};
+
+export const getObraServices = async (obraId: string): Promise<ObraService[]> => {
+  const q = query(
+    collection(db, OBRA_SERVICES_COLLECTION),
+    where('obraId', '==', obraId)
+  );
+
+  const querySnapshot = await getDocs(q);
+  const results = querySnapshot.docs.map((snapshot) => {
+    const data = snapshot.data();
+    return {
+      id: snapshot.id,
+      obraId: String(data.obraId ?? ''),
+      pacote: String(data.pacote ?? ''),
+      descricao: String(data.descricao ?? ''),
+      verba: typeof data.verba === 'number' ? data.verba : Number(data.verba ?? 0),
+      createdAt: data.createdAt?.toDate?.().toISOString() || String(data.createdAt ?? ''),
+      updatedAt: data.updatedAt?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
+    } as ObraService;
+  });
+
+  results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return results;
+};
+
+export const createObraService = async (
+  data: Omit<ObraService, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  const docRef = await addDoc(collection(db, OBRA_SERVICES_COLLECTION), {
+    obraId: data.obraId,
+    pacote: data.pacote,
+    descricao: data.descricao,
+    verba: data.verba,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+
+  return docRef.id;
+};
+
+export const updateObraService = async (
+  serviceId: string,
+  data: Pick<ObraService, 'pacote' | 'descricao' | 'verba'>
+): Promise<void> => {
+  await updateDoc(doc(db, OBRA_SERVICES_COLLECTION, serviceId), {
+    pacote: data.pacote,
+    descricao: data.descricao,
+    verba: data.verba,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const deleteObraService = async (serviceId: string): Promise<void> => {
+  await deleteDoc(doc(db, OBRA_SERVICES_COLLECTION, serviceId));
+};
+
+export const getObraNotes = async (obraId: string): Promise<ObraNote[]> => {
+  const q = query(collection(db, OBRA_NOTES_COLLECTION), where('obraId', '==', obraId));
+  const querySnapshot = await getDocs(q);
+  const results = querySnapshot.docs.map((snapshot) => {
+    const data = snapshot.data();
+    return {
+      id: snapshot.id,
+      obraId: String(data.obraId ?? ''),
+      serviceId: data.serviceId ? String(data.serviceId) : null,
+      numero: String(data.numero ?? ''),
+      data: String(data.data ?? ''),
+      empresa: String(data.empresa ?? ''),
+      descricao: String(data.descricao ?? ''),
+      valor: typeof data.valor === 'number' ? data.valor : Number(data.valor ?? 0),
+      createdAt: data.createdAt?.toDate?.().toISOString() || String(data.createdAt ?? ''),
+      updatedAt: data.updatedAt?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
+    } as ObraNote;
+  });
+
+  results.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  return results;
+};
+
+export const createObraNote = async (
+  data: Omit<ObraNote, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  const docRef = await addDoc(collection(db, OBRA_NOTES_COLLECTION), {
+    obraId: data.obraId,
+    serviceId: data.serviceId ?? null,
+    numero: data.numero,
+    data: data.data,
+    empresa: data.empresa,
+    descricao: data.descricao,
+    valor: data.valor,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+
+  return docRef.id;
+};
+
+export const updateObraNote = async (
+  noteId: string,
+  data: Pick<ObraNote, 'serviceId' | 'numero' | 'data' | 'empresa' | 'descricao' | 'valor'>
+): Promise<void> => {
+  await updateDoc(doc(db, OBRA_NOTES_COLLECTION, noteId), {
+    serviceId: data.serviceId ?? null,
+    numero: data.numero,
+    data: data.data,
+    empresa: data.empresa,
+    descricao: data.descricao,
+    valor: data.valor,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const deleteObraNote = async (noteId: string): Promise<void> => {
+  await deleteDoc(doc(db, OBRA_NOTES_COLLECTION, noteId));
 };
 
 export const getIncendiosByFilter = async (
