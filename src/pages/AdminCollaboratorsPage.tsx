@@ -11,7 +11,7 @@ const ALL_PERMISSIONS: { label: string; value: UserPermission }[] = [
 export default function AdminCollaboratorsPage() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -84,29 +84,35 @@ export default function AdminCollaboratorsPage() {
     }
   };
 
-  const handleSave = async (collaborator: Collaborator) => {
-    if (!collaborator.nome.trim()) {
+  const handleSaveAll = async () => {
+    const invalid = collaborators.find((c) => !c.nome.trim());
+    if (invalid) {
       setError('O nome do colaborador é obrigatório.');
       setSuccess('');
       return;
     }
 
-    setSavingId(collaborator.id);
+    setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      await updateCollaborator(collaborator.id, {
-        nome: collaborator.nome.trim(),
-        permissions: collaborator.permissions,
-      });
-      setSuccess(`Dados de ${collaborator.nome} atualizados com sucesso.`);
+      await Promise.all(
+        collaborators.map((collaborator) =>
+          updateCollaborator(collaborator.id, {
+            nome: collaborator.nome.trim(),
+            permissions: collaborator.permissions,
+          })
+        )
+      );
+
+      setSuccess('Alterações salvas com sucesso.');
       await loadCollaborators();
     } catch (err) {
       console.error('Erro ao salvar colaborador:', err);
       setError('Não foi possível salvar as alterações.');
     } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   };
 
@@ -126,13 +132,24 @@ export default function AdminCollaboratorsPage() {
             </p>
           </div>
 
-          <Link
-            to="/admin"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft size={18} className="mr-2" />
-            Voltar
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/admin"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft size={18} className="mr-2" />
+              Voltar
+            </Link>
+            <button
+              type="button"
+              onClick={() => void handleSaveAll()}
+              disabled={saving || loading || !!deletingId}
+              className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+            >
+              <Save size={18} className="mr-2" />
+              {saving ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -162,6 +179,7 @@ export default function AdminCollaboratorsPage() {
                       type="text"
                       value={collaborator.nome}
                       onChange={(e) => handleNameChange(collaborator.id, e.target.value)}
+                      disabled={saving || deletingId === collaborator.id}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
@@ -187,6 +205,7 @@ export default function AdminCollaboratorsPage() {
                             onChange={(e) =>
                               handlePermissionChange(collaborator.id, permission.value, e.target.checked)
                             }
+                            disabled={saving || deletingId === collaborator.id}
                             className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                           />
                           {permission.label}
@@ -198,17 +217,8 @@ export default function AdminCollaboratorsPage() {
                   <div className="flex flex-col gap-2">
                     <button
                       type="button"
-                      onClick={() => void handleSave(collaborator)}
-                      disabled={savingId === collaborator.id || deletingId === collaborator.id}
-                      className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-                    >
-                      <Save size={18} className="mr-2" />
-                      {savingId === collaborator.id ? 'Salvando...' : 'Salvar'}
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => void handleDelete(collaborator)}
-                      disabled={deletingId === collaborator.id || savingId === collaborator.id}
+                      disabled={deletingId === collaborator.id || saving}
                       className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                     >
                       <Trash2 size={18} className="mr-2" />

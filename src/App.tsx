@@ -4,13 +4,13 @@ import ObraPage from './pages/ObraPage';
 import ObraServicesPage from './pages/ObraServicesPage';
 import ObraNotesPage from './pages/ObraNotesPage';
 import ObraGastosPage from './pages/ObraGastosPage';
+import ObraDashboardPage from './pages/ObraDashboardPage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
 import AdminCollaboratorsPage from './pages/AdminCollaboratorsPage';
 import AdminNewCollaboratorPage from './pages/AdminNewCollaboratorPage';
 import IncendiosApagadosPage from './pages/IncendiosApagadosPage';
-import Dashboard from './components/Dashboard';
 import IncendioList from './components/IncendioList';
 import IncendioForm from './components/IncendioForm';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,7 +20,7 @@ import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
 import { getCurrentUser, logout, onAuthChange, isAdmin } from './services/auth';
-import { Home, BarChart3, List, LogOut, User, Shield, CheckCircle, Menu, X } from 'lucide-react';
+import { Home, List, LogOut, User, Shield, CheckCircle, Menu, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
 function App() {
@@ -109,19 +109,16 @@ function App() {
                   </Link>
                 </div>
 
-                <div className="hidden md:flex md:flex-1 md:items-center md:justify-between md:gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="hidden md:flex md:flex-1 md:items-center md:gap-4">
+                  <div className="flex flex-1 justify-center">
+                    <div className="flex items-center gap-2">
                     <NavLink to="/" end className={({ isActive }) => getNavLinkClass(isActive)}>
                       <Home size={18} />
                       <span>Home</span>
                     </NavLink>
-                    <NavLink to="/dashboard" className={({ isActive }) => getNavLinkClass(isActive)}>
-                      <BarChart3 size={18} />
-                      <span>Dashboard</span>
-                    </NavLink>
                     <NavLink to="/todos-incendios" className={({ isActive }) => getNavLinkClass(isActive)}>
                       <List size={18} />
-                      <span>Todos</span>
+                      <span>Incêndios</span>
                     </NavLink>
                     <NavLink to="/incendios-apagados" className={({ isActive }) => getNavLinkClass(isActive)}>
                       <CheckCircle size={18} />
@@ -133,6 +130,7 @@ function App() {
                         <span>Admin</span>
                       </NavLink>
                     )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
@@ -172,20 +170,12 @@ function App() {
                       <span>Home</span>
                     </NavLink>
                     <NavLink
-                      to="/dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) => getNavLinkClass(isActive)}
-                    >
-                      <BarChart3 size={18} />
-                      <span>Dashboard</span>
-                    </NavLink>
-                    <NavLink
                       to="/todos-incendios"
                       onClick={() => setMobileMenuOpen(false)}
                       className={({ isActive }) => getNavLinkClass(isActive)}
                     >
                       <List size={18} />
-                      <span>Todos os Incêndios</span>
+                      <span>Incêndios</span>
                     </NavLink>
                     <NavLink
                       to="/incendios-apagados"
@@ -299,10 +289,10 @@ function App() {
             }
           />
           <Route
-            path="/dashboard"
+            path="/obra/:obraId/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard incendios={allIncendios} />
+                <ObraDashboardPage />
               </ProtectedRoute>
             }
           />

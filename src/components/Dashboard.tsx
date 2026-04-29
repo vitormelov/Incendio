@@ -2,15 +2,15 @@ import { useMemo } from 'react';
 import { AlertTriangle, CheckCircle, Clock, TrendingUp, MapPin } from 'lucide-react';
 import { Incendio } from '../types';
 import { getDisciplinaName, getDisciplinaColor } from '../utils/colors';
-import { setores } from '../config/setores';
 import { format, differenceInDays } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 
 interface DashboardProps {
   incendios: Incendio[];
+  setores?: { id: string; nome: string }[];
 }
 
-export default function Dashboard({ incendios }: DashboardProps) {
+export default function Dashboard({ incendios, setores = [] }: DashboardProps) {
   const stats = useMemo(() => {
     const abertos = incendios.filter(i => !i.dataFoiApagada);
     const fechados = incendios.filter(i => i.dataFoiApagada);
@@ -39,11 +39,17 @@ export default function Dashboard({ incendios }: DashboardProps) {
     };
 
     // Estatísticas por setor
-    const porSetor = setores.map(setor => ({
-      setorId: setor.id,
-      setorNome: setor.nome,
-      quantidade: abertos.filter(i => i.setor === setor.id).length,
-    })).sort((a, b) => b.quantidade - a.quantidade); // Ordenar por quantidade (maior primeiro)
+    const uniqueSetores = setores.length
+      ? setores
+      : Array.from(new Set(incendios.map((i) => i.setor))).map((setorId) => ({ id: setorId, nome: setorId }));
+
+    const porSetor = uniqueSetores
+      .map((setor) => ({
+        setorId: setor.id,
+        setorNome: setor.nome,
+        quantidade: abertos.filter((i) => i.setor === setor.id).length,
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade); // Ordenar por quantidade (maior primeiro)
 
     return {
       total: incendios.length,
@@ -55,7 +61,7 @@ export default function Dashboard({ incendios }: DashboardProps) {
       porSeveridade,
       porSetor,
     };
-  }, [incendios]);
+  }, [incendios, setores]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">

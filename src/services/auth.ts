@@ -9,7 +9,7 @@ import {
 import { FirebaseError, getApp, getApps, initializeApp } from 'firebase/app';
 import { auth } from '../firebase/config';
 import { db, firebaseConfig } from '../firebase/config';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { UserPermission } from '../types';
 
 const ADMIN_EMAIL = 'projetos@preferencial.eng.br';
@@ -98,6 +98,51 @@ export const getCurrentUser = () => {
 
 export const isAdmin = (user: User | null): boolean => {
   return user?.email === ADMIN_EMAIL;
+};
+
+const permissionsCache = new Map<string, UserPermission[]>();
+
+export const getUserPermissions = async (uid: string): Promise<UserPermission[]> => {
+  const cached = permissionsCache.get(uid);
+  if (cached) return cached;
+
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) {
+      permissionsCache.set(uid, []);
+      return [];
+    }
+
+    const data = snap.data();
+    const permissions = Array.isArray(data.permissions)
+      ? (data.permissions.filter((p: unknown): p is UserPermission => p === 'colaborador') as UserPermission[])
+      : [];
+
+    permissionsCache.set(uid, permissions);
+    return permissions;
+  } catch (error) {
+    console.error('Erro ao buscar permissões do usuário:', error);
+    return [];
+  }
+};
+
+export const getCurrentUserPermissions = async (): Promise<UserPermission[]> => {
+  const user = getCurrentUser();
+  if (!user) return [];
+  return await getUserPermissions(user.uid);
+};
+
+export const canManageObraData = async (): Promise<boolean> => {
+  const user = getCurrentUser();
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  const permissions = await getUserPermissions(user.uid);
+  return permissions.includes('colaborador');
+};
+
+export const clearPermissionsCache = (uid?: string) => {
+  if (uid) permissionsCache.delete(uid);
+  else permissionsCache.clear();
 };
 
 export const onAuthChange = (callback: (user: User | null) => void) => {

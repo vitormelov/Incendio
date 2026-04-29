@@ -4,7 +4,7 @@ import { ArrowLeft, FileText, Pencil, Plus, Save, Trash2, X } from 'lucide-react
 import { getObraById } from '../config/setores';
 import { createObraNote, deleteObraNote, getObraNotes, updateObraNote } from '../services/firestore';
 import { ObraNote } from '../types';
-import { getCurrentUser, isAdmin } from '../services/auth';
+import { canManageObraData } from '../services/auth';
 
 type NoteDraft = Pick<ObraNote, 'numero' | 'data' | 'empresa' | 'descricao' | 'valor'>;
 type ModalMode = 'create' | 'edit';
@@ -25,7 +25,7 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
 export default function ObraNotesPage() {
   const { obraId } = useParams<{ obraId: string }>();
   const obra = obraId ? getObraById(obraId) : undefined;
-  const userIsAdmin = useMemo(() => isAdmin(getCurrentUser()), []);
+  const [canManage, setCanManage] = useState(false);
 
   const [notes, setNotes] = useState<ObraNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +69,17 @@ export default function ObraNotesPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setCanManage(await canManageObraData());
+      } catch {
+        setCanManage(false);
+      }
+    };
+    void run();
+  }, []);
 
   const validateDraft = (draft: NoteDraft): string | null => {
     if (!draft.numero.trim()) return 'O número da nota é obrigatório.';
@@ -214,9 +225,9 @@ export default function ObraNotesPage() {
           </Link>
         </div>
 
-        {!userIsAdmin && (
+        {!canManage && (
           <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-yellow-800">
-            Você pode visualizar as notas, mas apenas o admin pode criar/editar/excluir.
+            Você pode visualizar as notas, mas não tem permissão para criar/editar/excluir.
           </div>
         )}
 
@@ -229,7 +240,7 @@ export default function ObraNotesPage() {
           <div className="text-sm text-gray-600">
             {loading ? 'Carregando...' : `${filteredNotes.length} / ${notes.length} nota(s)`}
           </div>
-          {userIsAdmin && (
+          {canManage && (
             <button
               type="button"
               onClick={openCreateModal}
@@ -285,7 +296,7 @@ export default function ObraNotesPage() {
                         <button
                           type="button"
                           onClick={() => openEditModal(note)}
-                          disabled={!userIsAdmin}
+                          disabled={!canManage}
                           className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                         >
                           <Pencil size={16} className="mr-2" />
@@ -294,7 +305,7 @@ export default function ObraNotesPage() {
                         <button
                           type="button"
                           onClick={() => void handleDelete(note)}
-                          disabled={!userIsAdmin || deletingId === note.id}
+                          disabled={!canManage || deletingId === note.id}
                           className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                         >
                           <Trash2 size={16} className="mr-2" />
@@ -329,7 +340,7 @@ export default function ObraNotesPage() {
                       type="text"
                       value={draft.numero}
                       onChange={(e) => setDraft((c) => ({ ...c, numero: e.target.value }))}
-                      disabled={!userIsAdmin || !!savingId}
+                      disabled={!canManage || !!savingId}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
                     />
                   </div>
@@ -339,7 +350,7 @@ export default function ObraNotesPage() {
                       type="date"
                       value={draft.data}
                       onChange={(e) => setDraft((c) => ({ ...c, data: e.target.value }))}
-                      disabled={!userIsAdmin || !!savingId}
+                      disabled={!canManage || !!savingId}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
                     />
                   </div>
@@ -351,7 +362,7 @@ export default function ObraNotesPage() {
                     type="text"
                     value={draft.empresa}
                     onChange={(e) => setDraft((c) => ({ ...c, empresa: e.target.value }))}
-                    disabled={!userIsAdmin || !!savingId}
+                    disabled={!canManage || !!savingId}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
                   />
                 </div>
@@ -362,7 +373,7 @@ export default function ObraNotesPage() {
                     type="text"
                     value={draft.descricao}
                     onChange={(e) => setDraft((c) => ({ ...c, descricao: e.target.value }))}
-                    disabled={!userIsAdmin || !!savingId}
+                    disabled={!canManage || !!savingId}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
                   />
                 </div>
@@ -375,7 +386,7 @@ export default function ObraNotesPage() {
                     step="0.01"
                     value={Number.isFinite(draft.valor) ? draft.valor : 0}
                     onChange={(e) => setDraft((c) => ({ ...c, valor: Number(e.target.value || 0) }))}
-                    disabled={!userIsAdmin || !!savingId}
+                    disabled={!canManage || !!savingId}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
                   />
                   <div className="mt-1 text-xs text-gray-500">{currencyFormatter.format(draft.valor || 0)}</div>
@@ -395,7 +406,7 @@ export default function ObraNotesPage() {
               <button
                 type="button"
                 onClick={() => void handleSubmit()}
-                disabled={!userIsAdmin || !!savingId}
+                disabled={!canManage || !!savingId}
                 className="inline-flex items-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
               >
                 <Save size={18} className="mr-2" />

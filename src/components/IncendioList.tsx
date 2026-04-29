@@ -18,6 +18,7 @@ interface IncendioListProps {
   showStatusFilter?: boolean; // Para controlar se mostra o filtro de status
   showEditButton?: boolean; // Para controlar se mostra o botão de editar
   showDeleteButton?: boolean; // Para controlar se mostra o botão de deletar (apenas admin)
+  allowDelete?: boolean; // Permite deletar (ex.: admin ou colaborador)
 }
 
 type StatusFilter = '' | 'aberto' | 'atrasado';
@@ -31,10 +32,12 @@ export default function IncendioList({
   showResolveButton = false,
   showStatusFilter = true,
   showEditButton = false,
-  showDeleteButton = false
+  showDeleteButton = false,
+  allowDelete
 }: IncendioListProps) {
   const user = getCurrentUser();
   const userIsAdmin = isAdmin(user);
+  const canDelete = allowDelete ?? userIsAdmin;
   const [filters, setFilters] = useState({
     obraId: '' as string | '',
     setor: '' as string | '',
@@ -326,7 +329,7 @@ export default function IncendioList({
                           <Edit size={18} />
                         </button>
                       )}
-                      {showDeleteButton && userIsAdmin && (
+                      {showDeleteButton && canDelete && (
                         <button
                           onClick={() => {
                             if (window.confirm('Tem certeza que deseja excluir este incêndio?')) {
@@ -334,7 +337,7 @@ export default function IncendioList({
                             }
                           }}
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          title="Excluir (Apenas Admin)"
+                          title="Excluir"
                         >
                           <Trash2 size={18} />
                         </button>

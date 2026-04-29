@@ -4,14 +4,14 @@ import { ArrowLeft, Banknote, ChevronDown, ChevronRight, Save } from 'lucide-rea
 import { getObraById } from '../config/setores';
 import { getObraNotes, getObraServices, updateObraNote } from '../services/firestore';
 import { ObraNote, ObraService } from '../types';
-import { getCurrentUser, isAdmin } from '../services/auth';
+import { canManageObraData } from '../services/auth';
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function ObraGastosPage() {
   const { obraId } = useParams<{ obraId: string }>();
   const obra = obraId ? getObraById(obraId) : undefined;
-  const userIsAdmin = useMemo(() => isAdmin(getCurrentUser()), []);
+  const [canManage, setCanManage] = useState(false);
 
   const [services, setServices] = useState<ObraService[]>([]);
   const [notes, setNotes] = useState<ObraNote[]>([]);
@@ -126,6 +126,17 @@ export default function ObraGastosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
 
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setCanManage(await canManageObraData());
+      } catch {
+        setCanManage(false);
+      }
+    };
+    void run();
+  }, []);
+
   const togglePackage = (pacote: string) => {
     setExpandedPackages((prev) => {
       const next = new Set(prev);
@@ -155,7 +166,7 @@ export default function ObraGastosPage() {
   };
 
   const handleSaveAll = async () => {
-    if (!userIsAdmin) return;
+    if (!canManage) return;
     setSaving(true);
     setError('');
     setSuccess('');
@@ -220,7 +231,7 @@ export default function ObraGastosPage() {
               <ArrowLeft size={18} className="mr-2" />
               Voltar
             </Link>
-            {userIsAdmin && (
+            {canManage && (
               <button
                 type="button"
                 onClick={() => void handleSaveAll()}
@@ -234,9 +245,9 @@ export default function ObraGastosPage() {
           </div>
         </div>
 
-        {!userIsAdmin && (
+        {!canManage && (
           <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-yellow-800">
-            Você pode visualizar os gastos, mas apenas o admin pode alterar os vínculos.
+            Você pode visualizar os gastos, mas não tem permissão para alterar os vínculos.
           </div>
         )}
 
@@ -310,7 +321,7 @@ export default function ObraGastosPage() {
                                 <select
                                   value={links[n.id] ?? ''}
                                   onChange={(e) => setLinks((c) => ({ ...c, [n.id]: e.target.value }))}
-                                  disabled={!userIsAdmin || saving}
+                                  disabled={!canManage || saving}
                                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
                                 >
                                   <option value="">Sem vínculo</option>
@@ -456,7 +467,7 @@ export default function ObraGastosPage() {
                                                   <select
                                                     value={links[n.id] ?? ''}
                                                     onChange={(e) => setLinks((c) => ({ ...c, [n.id]: e.target.value }))}
-                                                    disabled={!userIsAdmin || saving}
+                                                    disabled={!canManage || saving}
                                                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
                                                   >
                                                     <option value="">Sem vínculo</option>

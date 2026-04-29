@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, Pencil, Plus, Save, Trash2, Wrenc
 import { getObraById } from '../config/setores';
 import { createObraService, deleteObraService, getObraServices, updateObraService } from '../services/firestore';
 import { ObraService } from '../types';
-import { getCurrentUser, isAdmin } from '../services/auth';
+import { canManageObraData } from '../services/auth';
 
 type ServiceDraft = Pick<ObraService, 'pacote' | 'descricao' | 'verba'>;
 
@@ -24,7 +24,7 @@ type ModalMode = 'create' | 'edit';
 export default function ObraServicesPage() {
   const { obraId } = useParams<{ obraId: string }>();
   const obra = obraId ? getObraById(obraId) : undefined;
-  const userIsAdmin = useMemo(() => isAdmin(getCurrentUser()), []);
+  const [canManage, setCanManage] = useState(false);
 
   const [services, setServices] = useState<ObraService[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +58,17 @@ export default function ObraServicesPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setCanManage(await canManageObraData());
+      } catch {
+        setCanManage(false);
+      }
+    };
+    void run();
+  }, []);
 
   const validateDraft = (draft: ServiceDraft): string | null => {
     if (!draft.pacote.trim()) return 'O pacote do serviço é obrigatório.';
@@ -239,9 +250,9 @@ export default function ObraServicesPage() {
           </div>
         </div>
 
-        {!userIsAdmin && (
+        {!canManage && (
           <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-yellow-800">
-            Você pode visualizar os serviços, mas apenas o admin pode criar/editar/excluir.
+            Você pode visualizar os serviços, mas não tem permissão para criar/editar/excluir.
           </div>
         )}
 
@@ -280,7 +291,7 @@ export default function ObraServicesPage() {
               </>
             )}
 
-            {userIsAdmin && (
+          {canManage && (
               <button
                 type="button"
                 onClick={() => openCreateModal()}
@@ -324,7 +335,7 @@ export default function ObraServicesPage() {
                     </button>
 
                     <div className="flex items-center gap-2">
-                      {userIsAdmin && (
+                      {canManage && (
                         <button
                           type="button"
                           onClick={() => openCreateModal({ pacote: group.pacote })}
@@ -359,9 +370,9 @@ export default function ObraServicesPage() {
                                   <button
                                     type="button"
                                     onClick={() => openEditModal(service)}
-                                    disabled={!userIsAdmin}
+                                      disabled={!canManage}
                                     className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                                    title={userIsAdmin ? 'Editar' : 'Apenas admin'}
+                                      title={canManage ? 'Editar' : 'Sem permissão'}
                                   >
                                     <Pencil size={16} className="mr-2" />
                                     Editar
@@ -369,9 +380,9 @@ export default function ObraServicesPage() {
                                   <button
                                     type="button"
                                     onClick={() => void handleDelete(service)}
-                                    disabled={!userIsAdmin || deletingId === service.id}
+                                      disabled={!canManage || deletingId === service.id}
                                     className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                                    title={userIsAdmin ? 'Excluir' : 'Apenas admin'}
+                                      title={canManage ? 'Excluir' : 'Sem permissão'}
                                   >
                                     <Trash2 size={16} className="mr-2" />
                                     {deletingId === service.id ? 'Excluindo...' : 'Excluir'}
@@ -416,7 +427,7 @@ export default function ObraServicesPage() {
                     type="text"
                     value={draft.pacote}
                     onChange={(e) => setDraft((c) => ({ ...c, pacote: e.target.value }))}
-                    disabled={!userIsAdmin || !!savingId}
+                      disabled={!canManage || !!savingId}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                   />
                 </div>
@@ -427,7 +438,7 @@ export default function ObraServicesPage() {
                     type="text"
                     value={draft.descricao}
                     onChange={(e) => setDraft((c) => ({ ...c, descricao: e.target.value }))}
-                    disabled={!userIsAdmin || !!savingId}
+                      disabled={!canManage || !!savingId}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                   />
                 </div>
@@ -440,7 +451,7 @@ export default function ObraServicesPage() {
                     step="0.01"
                     value={Number.isFinite(draft.verba) ? draft.verba : 0}
                     onChange={(e) => setDraft((c) => ({ ...c, verba: Number(e.target.value || 0) }))}
-                    disabled={!userIsAdmin || !!savingId}
+                      disabled={!canManage || !!savingId}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                   />
                   <div className="mt-1 text-xs text-gray-500">{currencyFormatter.format(draft.verba || 0)}</div>
@@ -460,7 +471,7 @@ export default function ObraServicesPage() {
               <button
                 type="button"
                 onClick={() => void handleSubmit()}
-                disabled={!userIsAdmin || !!savingId}
+                  disabled={!canManage || !!savingId}
                 className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 <Save size={18} className="mr-2" />
