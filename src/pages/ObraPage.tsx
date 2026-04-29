@@ -1,6 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Banknote, FileText, Receipt, Wrench } from 'lucide-react';
-import Logo from '../components/Logo';
 import { getObraById, getSetoresByObraId } from '../config/setores';
 
 export default function ObraPage() {
@@ -36,7 +35,6 @@ export default function ObraPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between gap-4 mb-10">
           <div className="flex items-center gap-4">
-            <Logo size="md" />
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{obra.nome}</h1>
               <p className="text-gray-600">Escolha o setor que deseja visualizar</p>

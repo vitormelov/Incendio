@@ -63,7 +63,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-lg shadow-xl p-8 backdrop-blur-sm bg-opacity-95">
           <div className="text-center mb-8">
             <div className="mb-6 flex justify-center">
-              <Logo size="lg" />
+              <Logo size="lg" showText />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Sistema de gestão colaborativo</h1>
             <p className="text-gray-600">Faça login para continuar</p>

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Plus, Save, Trash2, Wrench, X } from 'lucide-react';
-import Logo from '../components/Logo';
+import { ArrowLeft, ChevronDown, ChevronRight, Pencil, Plus, Save, Trash2, Wrench, X } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { createObraService, deleteObraService, getObraServices, updateObraService } from '../services/firestore';
 import { ObraService } from '../types';
@@ -38,6 +37,7 @@ export default function ObraServicesPage() {
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ServiceDraft>(emptyDraft);
+  const [expandedPackages, setExpandedPackages] = useState<Set<string>>(() => new Set());
 
   const load = async () => {
     if (!obraId) return;
@@ -66,10 +66,10 @@ export default function ObraServicesPage() {
     return null;
   };
 
-  const openCreateModal = () => {
+  const openCreateModal = (prefill?: Partial<ServiceDraft>) => {
     setModalMode('create');
     setActiveServiceId(null);
-    setDraft(emptyDraft);
+    setDraft({ ...emptyDraft, ...prefill });
     setError('');
     setSuccess('');
     setModalOpen(true);
@@ -88,6 +88,45 @@ export default function ObraServicesPage() {
     if (savingId) return;
     setModalOpen(false);
   };
+
+  const groupedByPackage = useMemo(() => {
+    const map = new Map<string, ObraService[]>();
+    for (const service of services) {
+      const pacote = (service.pacote || '').trim() || 'Sem pacote';
+      const current = map.get(pacote) || [];
+      current.push(service);
+      map.set(pacote, current);
+    }
+
+    const entries = Array.from(map.entries()).map(([pacote, items]) => {
+      items.sort((a, b) => {
+        const byDesc = a.descricao.localeCompare(b.descricao, 'pt-BR');
+        if (byDesc !== 0) return byDesc;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      const subtotal = items.reduce((sum, s) => sum + (Number.isFinite(s.verba) ? s.verba : 0), 0);
+      return { pacote, items, subtotal };
+    });
+
+    entries.sort((a, b) => a.pacote.localeCompare(b.pacote, 'pt-BR'));
+    return entries;
+  }, [services]);
+
+  const totalVerba = useMemo(() => {
+    return services.reduce((sum, s) => sum + (Number.isFinite(s.verba) ? s.verba : 0), 0);
+  }, [services]);
+
+  const togglePackage = (pacote: string) => {
+    setExpandedPackages((prev) => {
+      const next = new Set(prev);
+      if (next.has(pacote)) next.delete(pacote);
+      else next.add(pacote);
+      return next;
+    });
+  };
+
+  const expandAll = () => setExpandedPackages(new Set(groupedByPackage.map((g) => g.pacote)));
+  const collapseAll = () => setExpandedPackages(new Set());
 
   const handleSubmit = async () => {
     if (!obraId) return;
@@ -112,16 +151,22 @@ export default function ObraServicesPage() {
           descricao: draft.descricao.trim(),
           verba: draft.verba,
         });
-        setSuccess('Serviço criado com sucesso.');
+        setSuccess('Item criado com sucesso.');
       } else if (activeServiceId) {
         await updateObraService(activeServiceId, {
           pacote: draft.pacote.trim(),
           descricao: draft.descricao.trim(),
           verba: draft.verba,
         });
-        setSuccess('Serviço atualizado com sucesso.');
+        setSuccess('Item atualizado com sucesso.');
       }
       await load();
+      setExpandedPackages((prev) => {
+        const pacote = draft.pacote.trim() || 'Sem pacote';
+        const next = new Set(prev);
+        next.add(pacote);
+        return next;
+      });
       setModalOpen(false);
     } catch (err) {
       console.error('Erro ao salvar serviço:', err);
@@ -133,7 +178,7 @@ export default function ObraServicesPage() {
 
   const handleDelete = async (service: ObraService) => {
     const confirmed = window.confirm(
-      `Tem certeza que deseja excluir o serviço "${service.pacote}"? Essa ação não pode ser desfeita.`
+      `Tem certeza que deseja excluir o item "${service.descricao}" do pacote "${service.pacote}"? Essa ação não pode ser desfeita.`
     );
     if (!confirmed) return;
 
@@ -143,7 +188,7 @@ export default function ObraServicesPage() {
 
     try {
       await deleteObraService(service.id);
-      setSuccess('Serviço excluído com sucesso.');
+      setSuccess('Item excluído com sucesso.');
       await load();
     } catch (err) {
       console.error('Erro ao excluir serviço:', err);
@@ -173,7 +218,6 @@ export default function ObraServicesPage() {
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
             <div className="mb-4 flex items-center gap-3">
-              <Logo size="sm" />
               <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full">
                 <Wrench className="text-white" size={24} />
               </div>
@@ -213,19 +257,40 @@ export default function ObraServicesPage() {
 
         <div className="mb-6 flex items-center justify-between gap-3">
           <div className="text-sm text-gray-600">
-            {loading ? 'Carregando...' : `${services.length} serviço(s) cadastrado(s)`}
+            {loading ? 'Carregando...' : `${services.length} item(ns) • Total ${currencyFormatter.format(totalVerba)}`}
           </div>
 
-          {userIsAdmin && (
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              <Plus size={18} className="mr-2" />
-              Novo serviço
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {!loading && services.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={expandAll}
+                  className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Expandir tudo
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAll}
+                  className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Recolher tudo
+                </button>
+              </>
+            )}
+
+            {userIsAdmin && (
+              <button
+                type="button"
+                onClick={() => openCreateModal()}
+                className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                <Plus size={18} className="mr-2" />
+                Novo item
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -233,52 +298,95 @@ export default function ObraServicesPage() {
         ) : services.length === 0 ? (
           <div className="py-12 text-center text-gray-500">Nenhum serviço cadastrado.</div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pacote</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verba</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {services.map((service) => (
-                  <tr key={service.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{service.pacote}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{service.descricao}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                      {currencyFormatter.format(service.verba || 0)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(service)}
-                          disabled={!userIsAdmin}
-                          className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                          title={userIsAdmin ? 'Editar' : 'Apenas admin'}
-                        >
-                          <Pencil size={16} className="mr-2" />
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(service)}
-                          disabled={!userIsAdmin || deletingId === service.id}
-                          className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                          title={userIsAdmin ? 'Excluir' : 'Apenas admin'}
-                        >
-                          <Trash2 size={16} className="mr-2" />
-                          {deletingId === service.id ? 'Excluindo...' : 'Excluir'}
-                        </button>
+          <div className="space-y-4">
+            {groupedByPackage.map((group) => {
+              const isExpanded = expandedPackages.has(group.pacote);
+              return (
+                <div key={group.pacote} className="rounded-lg border border-gray-200 bg-white">
+                  <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => togglePackage(group.pacote)}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      title={isExpanded ? 'Recolher pacote' : 'Expandir pacote'}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown size={18} className="text-gray-600" />
+                      ) : (
+                        <ChevronRight size={18} className="text-gray-600" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold text-gray-900">{group.pacote}</div>
+                        <div className="text-xs text-gray-500">
+                          {group.items.length} item(ns) • Subtotal {currencyFormatter.format(group.subtotal)}
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {userIsAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => openCreateModal({ pacote: group.pacote })}
+                          className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                        >
+                          <Plus size={16} className="mr-2" />
+                          Novo item
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verba</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {group.items.map((service) => (
+                            <tr key={service.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-700">{service.descricao}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                                {currencyFormatter.format(service.verba || 0)}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditModal(service)}
+                                    disabled={!userIsAdmin}
+                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                    title={userIsAdmin ? 'Editar' : 'Apenas admin'}
+                                  >
+                                    <Pencil size={16} className="mr-2" />
+                                    Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleDelete(service)}
+                                    disabled={!userIsAdmin || deletingId === service.id}
+                                    className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                    title={userIsAdmin ? 'Excluir' : 'Apenas admin'}
+                                  >
+                                    <Trash2 size={16} className="mr-2" />
+                                    {deletingId === service.id ? 'Excluindo...' : 'Excluir'}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -288,7 +396,7 @@ export default function ObraServicesPage() {
           <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-lg font-bold text-gray-900">
-                {modalMode === 'create' ? 'Novo serviço' : 'Editar serviço'}
+                {modalMode === 'create' ? 'Novo item de serviço' : 'Editar item de serviço'}
               </h2>
               <button
                 type="button"

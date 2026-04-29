@@ -1,4 +1,4 @@
-# Incendio - Sistema de Gestão de Problemas em Obra
+# Obra Transparente - Sistema de Gestão de Problemas em Obra
 
 Sistema web para gerenciamento de problemas (incêndios) em obras de engenharia civil, permitindo visualização de plantas baixas em PDF com marcações interativas.
 

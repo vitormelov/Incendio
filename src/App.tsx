@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ObraPage from './pages/ObraPage';
 import ObraServicesPage from './pages/ObraServicesPage';
@@ -20,7 +20,7 @@ import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
 import { getCurrentUser, logout, onAuthChange, isAdmin } from './services/auth';
-import { Home, BarChart3, List, LogOut, User, Shield, CheckCircle } from 'lucide-react';
+import { Home, BarChart3, List, LogOut, User, Shield, CheckCircle, Menu, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
 function App() {
@@ -28,6 +28,7 @@ function App() {
   const [selectedIncendio, setSelectedIncendio] = useState<Incendio | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(getCurrentUser());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {
@@ -73,73 +74,151 @@ function App() {
     }
   };
 
+  const navLinkBase =
+    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors';
+
+  const getNavLinkClass = (isActive: boolean) =>
+    `${navLinkBase} ${
+      isActive ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+    }`;
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-50">
         {user && (
           /* Navigation */
-          <nav className="bg-white border-b shadow-sm">
+          <nav className="sticky top-0 z-40 bg-white/95 border-b shadow-sm backdrop-blur">
             <div className="max-w-7xl mx-auto px-4">
-              <div className="flex items-center justify-between h-16">
-                <Link to="/" className="flex items-center">
-                  <Logo size="md" />
-                </Link>
-                <div className="flex items-center gap-4">
-                  <div className="flex gap-4">
-                    <Link
-                      to="/"
-                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-                    >
-                      <Home size={20} />
+              <div className="flex h-16 items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen((v) => !v)}
+                    className="inline-flex items-center justify-center rounded-md p-2 text-gray-700 hover:bg-gray-100 md:hidden"
+                    aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+                  >
+                    {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                  </button>
+
+                  <Link
+                    to="/"
+                    className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-gray-100"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Logo size="md" showText />
+                  </Link>
+                </div>
+
+                <div className="hidden md:flex md:flex-1 md:items-center md:justify-between md:gap-4">
+                  <div className="flex items-center gap-2">
+                    <NavLink to="/" end className={({ isActive }) => getNavLinkClass(isActive)}>
+                      <Home size={18} />
                       <span>Home</span>
-                    </Link>
-                    <Link
-                      to="/dashboard"
-                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-                    >
-                      <BarChart3 size={20} />
+                    </NavLink>
+                    <NavLink to="/dashboard" className={({ isActive }) => getNavLinkClass(isActive)}>
+                      <BarChart3 size={18} />
                       <span>Dashboard</span>
-                    </Link>
-                    <Link
-                      to="/todos-incendios"
-                      className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-                    >
-                      <List size={20} />
-                      <span>Todos os Incêndios</span>
-                    </Link>
-                    <Link
-                      to="/incendios-apagados"
-                      className="flex items-center gap-2 px-4 py-2 text-green-700 hover:bg-green-50 rounded"
-                    >
-                      <CheckCircle size={20} />
+                    </NavLink>
+                    <NavLink to="/todos-incendios" className={({ isActive }) => getNavLinkClass(isActive)}>
+                      <List size={18} />
+                      <span>Todos</span>
+                    </NavLink>
+                    <NavLink to="/incendios-apagados" className={({ isActive }) => getNavLinkClass(isActive)}>
+                      <CheckCircle size={18} />
                       <span>Resolvidos</span>
-                    </Link>
+                    </NavLink>
                     {isAdmin(user) && (
-                      <Link
-                        to="/admin"
-                        className="flex items-center gap-2 px-4 py-2 text-purple-700 hover:bg-purple-50 rounded border border-purple-200"
-                      >
-                        <Shield size={20} />
+                      <NavLink to="/admin" className={({ isActive }) => getNavLinkClass(isActive)}>
+                        <Shield size={18} />
                         <span>Admin</span>
-                      </Link>
+                      </NavLink>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 pl-4 border-l border-gray-300">
+
+                  <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <User size={18} />
-                      <span className="max-w-[200px] truncate">{getUserNameByEmail(user.email)}</span>
+                      <User size={16} />
+                      <span className="max-w-[220px] truncate">{getUserNameByEmail(user.email)}</span>
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                       title="Sair"
                     >
-                      <LogOut size={18} />
+                      <LogOut size={16} />
                       <span>Sair</span>
                     </button>
                   </div>
                 </div>
+
+                <div className="md:hidden flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                    <User size={16} />
+                    <span className="max-w-[140px] truncate">{getUserNameByEmail(user.email)}</span>
+                  </div>
+                </div>
               </div>
+
+              {mobileMenuOpen && (
+                <div className="md:hidden border-t border-gray-200 py-3">
+                  <div className="grid gap-2">
+                    <NavLink
+                      to="/"
+                      end
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={({ isActive }) => getNavLinkClass(isActive)}
+                    >
+                      <Home size={18} />
+                      <span>Home</span>
+                    </NavLink>
+                    <NavLink
+                      to="/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={({ isActive }) => getNavLinkClass(isActive)}
+                    >
+                      <BarChart3 size={18} />
+                      <span>Dashboard</span>
+                    </NavLink>
+                    <NavLink
+                      to="/todos-incendios"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={({ isActive }) => getNavLinkClass(isActive)}
+                    >
+                      <List size={18} />
+                      <span>Todos os Incêndios</span>
+                    </NavLink>
+                    <NavLink
+                      to="/incendios-apagados"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={({ isActive }) => getNavLinkClass(isActive)}
+                    >
+                      <CheckCircle size={18} />
+                      <span>Resolvidos</span>
+                    </NavLink>
+                    {isAdmin(user) && (
+                      <NavLink
+                        to="/admin"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={({ isActive }) => getNavLinkClass(isActive)}
+                      >
+                        <Shield size={18} />
+                        <span>Admin</span>
+                      </NavLink>
+                    )}
+
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <button
+                        onClick={handleLogout}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
+                        title="Sair"
+                      >
+                        <LogOut size={16} />
+                        <span>Sair</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </nav>
         )}

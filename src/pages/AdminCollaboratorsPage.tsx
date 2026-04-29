@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, UserCog } from 'lucide-react';
-import Logo from '../components/Logo';
 import { Collaborator, UserPermission } from '../types';
 import { deleteCollaborator, getCollaborators, updateCollaborator } from '../services/firestore';
 
@@ -117,7 +116,6 @@ export default function AdminCollaboratorsPage() {
         <div className="flex items-center justify-between gap-4 mb-8">
           <div>
             <div className="mb-4 flex items-center gap-3">
-              <Logo size="sm" />
               <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-500 rounded-full">
                 <UserCog className="text-white" size={24} />
               </div>

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { signup } from '../services/auth';
 import { ArrowLeft, CheckCircle, Lock, Mail, User as UserIcon, UserPlus, XCircle } from 'lucide-react';
-import Logo from '../components/Logo';
 
 export default function AdminNewCollaboratorPage() {
   const [nome, setNome] = useState('');
@@ -54,7 +53,6 @@ export default function AdminNewCollaboratorPage() {
         <div className="flex items-center justify-between gap-4 mb-8">
           <div>
             <div className="mb-4 flex items-center gap-3">
-              <Logo size="md" />
               <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500 rounded-full">
                 <UserPlus className="text-white" size={32} />
               </div>

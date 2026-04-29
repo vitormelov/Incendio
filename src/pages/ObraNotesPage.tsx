@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, FileText, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
-import Logo from '../components/Logo';
 import { getObraById } from '../config/setores';
 import { createObraNote, deleteObraNote, getObraNotes, updateObraNote } from '../services/firestore';
 import { ObraNote } from '../types';
@@ -34,11 +33,22 @@ export default function ObraNotesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [query, setQuery] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [draft, setDraft] = useState<NoteDraft>(emptyDraft);
+
+  const filteredNotes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return notes;
+    return notes.filter((n) => {
+      const numero = (n.numero || '').toLowerCase();
+      const empresa = (n.empresa || '').toLowerCase();
+      return numero.includes(q) || empresa.includes(q);
+    });
+  }, [notes, query]);
 
   const load = async () => {
     if (!obraId) return;
@@ -187,7 +197,6 @@ export default function ObraNotesPage() {
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
             <div className="mb-4 flex items-center gap-3">
-              <Logo size="sm" />
               <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-600 rounded-full">
                 <FileText className="text-white" size={24} />
               </div>
@@ -217,7 +226,9 @@ export default function ObraNotesPage() {
         )}
 
         <div className="mb-6 flex items-center justify-between gap-3">
-          <div className="text-sm text-gray-600">{loading ? 'Carregando...' : `${notes.length} nota(s)`}</div>
+          <div className="text-sm text-gray-600">
+            {loading ? 'Carregando...' : `${filteredNotes.length} / ${notes.length} nota(s)`}
+          </div>
           {userIsAdmin && (
             <button
               type="button"
@@ -230,10 +241,24 @@ export default function ObraNotesPage() {
           )}
         </div>
 
+        {!loading && notes.length > 0 && (
+          <div className="mb-4">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar por número da nota ou empresa..."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        )}
+
         {loading ? (
           <div className="py-12 text-center text-gray-500">Carregando notas...</div>
         ) : notes.length === 0 ? (
           <div className="py-12 text-center text-gray-500">Nenhuma nota cadastrada.</div>
+        ) : filteredNotes.length === 0 ? (
+          <div className="py-12 text-center text-gray-500">Nenhuma nota encontrada para o filtro.</div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
@@ -247,7 +272,7 @@ export default function ObraNotesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {notes.map((note) => (
+                {filteredNotes.map((note) => (
                   <tr key={note.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{note.numero}</td>
                     <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{note.data}</td>
