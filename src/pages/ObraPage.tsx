@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Banknote, BarChart3, FileText, Receipt, Wrench } from 'lucide-react';
+import { ArrowLeft, Banknote, BarChart3, CalendarDays, FileText, Receipt, Wrench } from 'lucide-react';
 import { getObraById, getSetoresByObraId } from '../config/setores';
 
 export default function ObraPage() {
@@ -48,6 +48,13 @@ export default function ObraPage() {
             >
               <BarChart3 size={18} className="mr-2" />
               Dashboard
+            </Link>
+            <Link
+              to={`/obra/${obraId}/planejamento`}
+              className="inline-flex items-center px-4 py-2 border border-slate-200 rounded-md text-sm font-medium text-slate-800 hover:bg-slate-50"
+            >
+              <CalendarDays size={18} className="mr-2" />
+              Planejamento
             </Link>
             <Link
               to={`/obra/${obraId}/servicos`}

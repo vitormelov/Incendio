@@ -248,6 +248,9 @@ export const getObraServices = async (obraId: string): Promise<ObraService[]> =>
       pacote: String(data.pacote ?? ''),
       descricao: String(data.descricao ?? ''),
       verba: typeof data.verba === 'number' ? data.verba : Number(data.verba ?? 0),
+      dataInicio: data.dataInicio ? String(data.dataInicio) : null,
+      dataTermino: data.dataTermino ? String(data.dataTermino) : null,
+      finalizado: typeof data.finalizado === 'boolean' ? data.finalizado : false,
       createdAt: data.createdAt?.toDate?.().toISOString() || String(data.createdAt ?? ''),
       updatedAt: data.updatedAt?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
     } as ObraService;
@@ -265,6 +268,9 @@ export const createObraService = async (
     pacote: data.pacote,
     descricao: data.descricao,
     verba: data.verba,
+    dataInicio: data.dataInicio ?? null,
+    dataTermino: data.dataTermino ?? null,
+    finalizado: data.finalizado ?? false,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
@@ -280,6 +286,18 @@ export const updateObraService = async (
     pacote: data.pacote,
     descricao: data.descricao,
     verba: data.verba,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const updateObraServicePlanning = async (
+  serviceId: string,
+  data: Pick<ObraService, 'dataInicio' | 'dataTermino' | 'finalizado'>
+): Promise<void> => {
+  await updateDoc(doc(db, OBRA_SERVICES_COLLECTION, serviceId), {
+    dataInicio: data.dataInicio ?? null,
+    dataTermino: data.dataTermino ?? null,
+    finalizado: !!data.finalizado,
     updatedAt: Timestamp.now(),
   });
 };

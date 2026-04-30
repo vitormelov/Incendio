@@ -42,6 +42,9 @@ export interface ObraService {
   pacote: string;
   descricao: string;
   verba: number;
+  dataInicio?: string | null; // YYYY-MM-DD
+  dataTermino?: string | null; // YYYY-MM-DD
+  finalizado?: boolean;
   createdAt: string;
   updatedAt: string;
 }
