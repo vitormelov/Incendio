@@ -98,3 +98,13 @@ export const getSetoresByObraId = (obraId: string): Setor[] => {
   return getObraById(obraId)?.setores ?? [];
 };
 
+/** Obra que contém o setor (para voltar da tela de marcações à lista de projetos). */
+export const getObraIdForSetor = (setorId: string): string | undefined => {
+  for (const obra of obras) {
+    if (obra.setores.some((s) => s.id === setorId)) {
+      return obra.id;
+    }
+  }
+  return undefined;
+};
+

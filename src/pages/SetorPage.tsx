@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
 import IncendioForm from '../components/IncendioForm';
 import IncendioList from '../components/IncendioList';
 import { Incendio } from '../types';
-import { getSetorById } from '../config/setores';
+import { getObraIdForSetor, getSetorById } from '../config/setores';
 import { getIncendios, createIncendio, updateIncendio, deleteIncendio } from '../services/firestore';
 import { getCurrentUser } from '../services/auth';
-import { List, Layout } from 'lucide-react';
+import { ArrowLeft, List, Layout } from 'lucide-react';
 
 export default function SetorPage() {
   const { setorId } = useParams<{ setorId: string }>();
@@ -18,6 +18,8 @@ export default function SetorPage() {
   const [viewMode, setViewMode] = useState<'pdf' | 'list'>('pdf');
 
   const setor = setorId ? getSetorById(setorId) : null;
+  const obraIdForSetor = setorId ? getObraIdForSetor(setorId) : undefined;
+  const voltarHref = obraIdForSetor ? `/obra/${obraIdForSetor}/incendios` : '/';
 
   useEffect(() => {
     if (setorId) {
@@ -105,9 +107,16 @@ export default function SetorPage() {
     <div className="h-screen flex flex-col">
       {/* Header */}
       <div className="bg-white border-b shadow-sm p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{setor.nome}</h1>
-          <div className="flex gap-2">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold truncate min-w-0">{setor.nome}</h1>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to={voltarHref}
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft size={18} className="mr-2" />
+              Voltar
+            </Link>
             <button
               onClick={() => setViewMode('pdf')}
               className={`p-2 rounded ${viewMode === 'pdf' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}

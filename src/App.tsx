@@ -8,6 +8,7 @@ import ObraDashboardPage from './pages/ObraDashboardPage';
 import ObraPlanningPage from './pages/ObraPlanningPage';
 import ObraRDOPage from './pages/ObraRDOPage';
 import ObraRDOListPage from './pages/ObraRDOListPage';
+import ObraIncendiosPage from './pages/ObraIncendiosPage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
@@ -256,6 +257,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ObraPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/obra/:obraId/incendios"
+            element={
+              <ProtectedRoute>
+                <ObraIncendiosPage />
               </ProtectedRoute>
             }
           />

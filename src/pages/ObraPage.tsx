@@ -1,6 +1,26 @@
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Banknote, BarChart3, CalendarDays, ClipboardList, FileText, Receipt, Wrench } from 'lucide-react';
-import { getObraById, getSetoresByObraId } from '../config/setores';
+import {
+  ArrowLeft,
+  Banknote,
+  BarChart3,
+  CalendarDays,
+  ClipboardList,
+  Flame,
+  Home,
+  LucideIcon,
+  Receipt,
+  Wrench,
+} from 'lucide-react';
+import { getObraById } from '../config/setores';
+
+type MenuItem = {
+  to: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  iconWrapClass: string;
+  iconClass: string;
+};
 
 export default function ObraPage() {
   const { obraId } = useParams<{ obraId: string }>();
@@ -14,7 +34,6 @@ export default function ObraPage() {
   }
 
   const obra = getObraById(obraId);
-  const setores = getSetoresByObraId(obraId);
 
   if (!obra) {
     return (
@@ -30,99 +49,106 @@ export default function ObraPage() {
     );
   }
 
+  const menuItems: MenuItem[] = [
+    {
+      to: `/obra/${obraId}/incendios`,
+      label: 'Incêndios',
+      description: 'Projetos, plantas e marcações nos PDFs',
+      icon: Flame,
+      iconWrapClass: 'bg-orange-100',
+      iconClass: 'text-orange-600',
+    },
+    {
+      to: `/obra/${obraId}/dashboard`,
+      label: 'Dashboard',
+      description: 'Visão geral por setor, disciplina e severidade',
+      icon: BarChart3,
+      iconWrapClass: 'bg-slate-100',
+      iconClass: 'text-slate-700',
+    },
+    {
+      to: `/obra/${obraId}/planejamento`,
+      label: 'Planejamento',
+      description: 'Datas e status dos serviços da obra',
+      icon: CalendarDays,
+      iconWrapClass: 'bg-slate-100',
+      iconClass: 'text-slate-700',
+    },
+    {
+      to: `/obra/${obraId}/servicos`,
+      label: 'Serviços',
+      description: 'Pacotes, descrições e verba',
+      icon: Wrench,
+      iconWrapClass: 'bg-blue-100',
+      iconClass: 'text-blue-600',
+    },
+    {
+      to: `/obra/${obraId}/notas`,
+      label: 'Notas',
+      description: 'Notas fiscais e valores por serviço',
+      icon: Receipt,
+      iconWrapClass: 'bg-emerald-100',
+      iconClass: 'text-emerald-600',
+    },
+    {
+      to: `/obra/${obraId}/gastos`,
+      label: 'Gastos',
+      description: 'Acompanhamento de gastos da obra',
+      icon: Banknote,
+      iconWrapClass: 'bg-indigo-100',
+      iconClass: 'text-indigo-600',
+    },
+    {
+      to: `/obra/${obraId}/rdo?modo=editar`,
+      label: 'RDO',
+      description: 'Relatório diário de obra por data',
+      icon: ClipboardList,
+      iconWrapClass: 'bg-violet-100',
+      iconClass: 'text-violet-600',
+    },
+    {
+      to: '/',
+      label: 'Trocar obra',
+      description: 'Voltar à lista de obras na página inicial',
+      icon: Home,
+      iconWrapClass: 'bg-gray-100',
+      iconClass: 'text-gray-700',
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between gap-4 mb-10">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{obra.nome}</h1>
-              <p className="text-gray-600">Escolha o setor que deseja visualizar</p>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Link
-              to={`/obra/${obraId}/dashboard`}
-              className="inline-flex items-center px-4 py-2 border border-gray-200 rounded-md text-sm font-medium text-gray-800 hover:bg-gray-50"
-            >
-              <BarChart3 size={18} className="mr-2" />
-              Dashboard
-            </Link>
-            <Link
-              to={`/obra/${obraId}/planejamento`}
-              className="inline-flex items-center px-4 py-2 border border-slate-200 rounded-md text-sm font-medium text-slate-800 hover:bg-slate-50"
-            >
-              <CalendarDays size={18} className="mr-2" />
-              Planejamento
-            </Link>
-            <Link
-              to={`/obra/${obraId}/servicos`}
-              className="inline-flex items-center px-4 py-2 border border-blue-200 rounded-md text-sm font-medium text-blue-700 hover:bg-blue-50"
-            >
-              <Wrench size={18} className="mr-2" />
-              Serviços
-            </Link>
-            <Link
-              to={`/obra/${obraId}/notas`}
-              className="inline-flex items-center px-4 py-2 border border-emerald-200 rounded-md text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-            >
-              <Receipt size={18} className="mr-2" />
-              Notas
-            </Link>
-            <Link
-              to={`/obra/${obraId}/gastos`}
-              className="inline-flex items-center px-4 py-2 border border-indigo-200 rounded-md text-sm font-medium text-indigo-700 hover:bg-indigo-50"
-            >
-              <Banknote size={18} className="mr-2" />
-              Gastos
-            </Link>
-            <Link
-              to={`/obra/${obraId}/rdo?modo=editar`}
-              className="inline-flex items-center px-4 py-2 border border-violet-200 rounded-md text-sm font-medium text-violet-700 hover:bg-violet-50"
-            >
-              <ClipboardList size={18} className="mr-2" />
-              RDO
-            </Link>
-            <Link
-              to="/"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft size={18} className="mr-2" />
-              Trocar obra
-            </Link>
-          </div>
+        <div className="text-center mb-12">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{obra.nome}</h1>
+          <p className="text-xl text-gray-600 mt-3 max-w-2xl mx-auto">
+            Menu da obra — escolha abaixo o que deseja acessar.
+          </p>
         </div>
 
-        {setores.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-600">
-            Nenhum setor cadastrado para esta obra ainda.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {setores.map((setor) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
               <Link
-                key={setor.id}
-                to={`/setor/${encodeURIComponent(setor.id)}`}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+                key={item.to}
+                to={item.to}
+                className="bg-white rounded-lg shadow-md p-8 hover:shadow-lg transition-shadow block"
               >
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-100 p-3 rounded-lg">
-                    <FileText className="text-blue-600" size={32} />
+                <div className="flex items-center gap-5">
+                  <div className={`${item.iconWrapClass} p-4 rounded-xl shrink-0`}>
+                    <Icon className={item.iconClass} size={40} strokeWidth={1.75} />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">{setor.nome}</h2>
-                    <p className="text-sm text-gray-600">
-                      {setor.pdfPath ? 'Visualizar planta e incêndios' : 'Setor cadastrado (PDF pendente)'}
-                    </p>
+                  <div className="min-w-0 text-left">
+                    <h2 className="text-2xl font-bold text-gray-900 leading-tight">{item.label}</h2>
+                    <p className="text-base text-gray-600 mt-1.5 leading-snug">{item.description}</p>
                   </div>
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
-
