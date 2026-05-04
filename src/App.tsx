@@ -24,7 +24,7 @@ import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
 import { getCurrentUser, logout, onAuthChange, isAdmin } from './services/auth';
-import { Home, List, LogOut, User, Shield, CheckCircle, Menu, X } from 'lucide-react';
+import { Home, LogOut, User, Shield, Menu, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
 function App() {
@@ -120,14 +120,7 @@ function App() {
                       <Home size={18} />
                       <span>Home</span>
                     </NavLink>
-                    <NavLink to="/todos-incendios" className={({ isActive }) => getNavLinkClass(isActive)}>
-                      <List size={18} />
-                      <span>Incêndios</span>
-                    </NavLink>
-                    <NavLink to="/incendios-apagados" className={({ isActive }) => getNavLinkClass(isActive)}>
-                      <CheckCircle size={18} />
-                      <span>Resolvidos</span>
-                    </NavLink>
+                    {/* Incêndios/Resolvidos agora ficam dentro da obra em /obra/:obraId/incendios */}
                     {isAdmin(user) && (
                       <NavLink to="/admin" className={({ isActive }) => getNavLinkClass(isActive)}>
                         <Shield size={18} />
@@ -173,22 +166,7 @@ function App() {
                       <Home size={18} />
                       <span>Home</span>
                     </NavLink>
-                    <NavLink
-                      to="/todos-incendios"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) => getNavLinkClass(isActive)}
-                    >
-                      <List size={18} />
-                      <span>Incêndios</span>
-                    </NavLink>
-                    <NavLink
-                      to="/incendios-apagados"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) => getNavLinkClass(isActive)}
-                    >
-                      <CheckCircle size={18} />
-                      <span>Resolvidos</span>
-                    </NavLink>
+                    {/* Incêndios/Resolvidos agora ficam dentro da obra em /obra/:obraId/incendios */}
                     {isAdmin(user) && (
                       <NavLink
                         to="/admin"

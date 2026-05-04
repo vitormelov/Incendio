@@ -19,6 +19,7 @@ interface IncendioListProps {
   showEditButton?: boolean; // Para controlar se mostra o botão de editar
   showDeleteButton?: boolean; // Para controlar se mostra o botão de deletar (apenas admin)
   allowDelete?: boolean; // Permite deletar (ex.: admin ou colaborador)
+  hideObraSetorFilters?: boolean; // Oculta filtros de obra e setor (ex.: quando já estamos dentro de uma obra)
 }
 
 type StatusFilter = '' | 'aberto' | 'atrasado';
@@ -33,7 +34,8 @@ export default function IncendioList({
   showStatusFilter = true,
   showEditButton = false,
   showDeleteButton = false,
-  allowDelete
+  allowDelete,
+  hideObraSetorFilters = false
 }: IncendioListProps) {
   const user = getCurrentUser();
   const userIsAdmin = isAdmin(user);
@@ -143,7 +145,11 @@ export default function IncendioList({
           className={`grid grid-cols-1 md:grid-cols-2 ${
             !setor
               ? showStatusFilter
-                ? 'lg:grid-cols-6'
+                ? hideObraSetorFilters
+                  ? 'lg:grid-cols-4'
+                  : 'lg:grid-cols-6'
+                : hideObraSetorFilters
+                ? 'lg:grid-cols-3'
                 : 'lg:grid-cols-5'
               : showStatusFilter
               ? 'lg:grid-cols-5'
@@ -151,7 +157,7 @@ export default function IncendioList({
           } gap-3`}
         >
           {/* Filtro por Obra */}
-          {!setor && (
+          {!setor && !hideObraSetorFilters && (
             <select
               value={filters.obraId}
               onChange={(e) => {
@@ -174,7 +180,7 @@ export default function IncendioList({
           )}
 
           {/* Filtro por Setor */}
-          {!setor && (
+          {!setor && !hideObraSetorFilters && (
             <select
               value={filters.setor}
               onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
