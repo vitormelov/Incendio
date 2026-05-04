@@ -36,6 +36,12 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
     }
+
+    // RDO (Relatório Diário de Obra)
+    match /obraRdos/{rdoId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn();
+    }
   }
 }
 

@@ -62,6 +62,46 @@ export interface ObraNote {
   updatedAt: string;
 }
 
+export type Turno = 'manha' | 'tarde' | 'noite';
+export type RDOClimaOpcao = 'limpo' | 'nublado' | 'chuvoso';
+export type RDOCondicaoOpcao = 'produtivo' | 'improdutivo';
+export type RDOAtividadeSituacao = 'iniciada' | 'em_andamento' | 'finalizada';
+
+export type RDOTurnoOpcoes<T extends string> = Record<Turno, Record<T, boolean>>;
+
+export interface RDOAtividade {
+  atividade: string;
+  local: string;
+  situacao: RDOAtividadeSituacao;
+}
+
+export interface RDOEfetivo {
+  funcao: string;
+  empreiteiro: string;
+  quantidade: number;
+}
+
+export interface RDOEquipamento {
+  nome: string;
+  proprietario: string;
+  status: 'ativo' | 'inativo';
+  quantidade: number;
+}
+
+export interface ObraRDO {
+  id: string;
+  obraId: string;
+  data: string; // YYYY-MM-DD
+  clima: RDOTurnoOpcoes<RDOClimaOpcao>;
+  condicao: RDOTurnoOpcoes<RDOCondicaoOpcao>;
+  atividades: RDOAtividade[];
+  efetivo: RDOEfetivo[];
+  equipamentos: RDOEquipamento[];
+  observacoes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type UserPermission = 'colaborador';
 
 export interface Collaborator {

@@ -4,6 +4,7 @@ import {
   getDocs, 
   getDoc, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   query, 
@@ -12,12 +13,13 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Incendio, Disciplina, Severidade, Collaborator, ObraNote, ObraService, UserPermission } from '../types';
+import { Incendio, Disciplina, Severidade, Collaborator, ObraNote, ObraService, UserPermission, ObraRDO, RDOClimaOpcao, RDOCondicaoOpcao, Turno } from '../types';
 
 const INCENDIOS_COLLECTION = 'incendios';
 const USERS_COLLECTION = 'users';
 const OBRA_SERVICES_COLLECTION = 'obraServices';
 const OBRA_NOTES_COLLECTION = 'obraNotes';
+const OBRA_RDOS_COLLECTION = 'obraRdos';
 
 // Helper para converter string de data (YYYY-MM-DD) para Date no fuso local
 const parseLocalDate = (dateString: string): Date => {
@@ -413,5 +415,109 @@ export const getIncendiosByFilter = async (
   }
   
   return results;
+};
+
+const buildRDODocId = (obraId: string, data: string) => `${obraId}_${data}`;
+
+const defaultTurnoMap = <T extends string>(options: readonly T[]) => {
+  const blank = options.reduce((acc, opt) => {
+    acc[opt] = false;
+    return acc;
+  }, {} as Record<T, boolean>);
+
+  return {
+    manha: { ...blank },
+    tarde: { ...blank },
+    noite: { ...blank },
+  } as Record<Turno, Record<T, boolean>>;
+};
+
+const defaultRDO = (obraId: string, data: string): Omit<ObraRDO, 'id' | 'createdAt' | 'updatedAt'> => ({
+  obraId,
+  data,
+  clima: defaultTurnoMap<RDOClimaOpcao>(['limpo', 'nublado', 'chuvoso'] as const),
+  condicao: defaultTurnoMap<RDOCondicaoOpcao>(['produtivo', 'improdutivo'] as const),
+  atividades: [],
+  efetivo: [],
+  equipamentos: [],
+  observacoes: '',
+});
+
+export const getObraRDOs = async (obraId: string): Promise<ObraRDO[]> => {
+  const q = query(collection(db, OBRA_RDOS_COLLECTION), where('obraId', '==', obraId));
+  const querySnapshot = await getDocs(q);
+  const results = querySnapshot.docs.map((snapshot) => {
+    const data = snapshot.data();
+    return {
+      id: snapshot.id,
+      obraId: String(data.obraId ?? ''),
+      data: String(data.data ?? ''),
+      clima: (data.clima ?? defaultRDO(obraId, String(data.data ?? '')).clima) as ObraRDO['clima'],
+      condicao: (data.condicao ?? defaultRDO(obraId, String(data.data ?? '')).condicao) as ObraRDO['condicao'],
+      atividades: Array.isArray(data.atividades) ? (data.atividades as ObraRDO['atividades']) : [],
+      efetivo: Array.isArray(data.efetivo) ? (data.efetivo as ObraRDO['efetivo']) : [],
+      equipamentos: Array.isArray(data.equipamentos) ? (data.equipamentos as ObraRDO['equipamentos']) : [],
+      observacoes: String(data.observacoes ?? ''),
+      createdAt: data.createdAt?.toDate?.().toISOString() || String(data.createdAt ?? ''),
+      updatedAt: data.updatedAt?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
+    } as ObraRDO;
+  });
+
+  results.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  return results;
+};
+
+export const getObraRDOByDate = async (obraId: string, data: string): Promise<ObraRDO | null> => {
+  const id = buildRDODocId(obraId, data);
+  const snap = await getDoc(doc(db, OBRA_RDOS_COLLECTION, id));
+  if (!snap.exists()) return null;
+
+  const d = snap.data();
+  return {
+    id: snap.id,
+    obraId: String(d.obraId ?? obraId),
+    data: String(d.data ?? data),
+    clima: (d.clima ?? defaultRDO(obraId, data).clima) as ObraRDO['clima'],
+    condicao: (d.condicao ?? defaultRDO(obraId, data).condicao) as ObraRDO['condicao'],
+    atividades: Array.isArray(d.atividades) ? (d.atividades as ObraRDO['atividades']) : [],
+    efetivo: Array.isArray(d.efetivo) ? (d.efetivo as ObraRDO['efetivo']) : [],
+    equipamentos: Array.isArray(d.equipamentos) ? (d.equipamentos as ObraRDO['equipamentos']) : [],
+    observacoes: String(d.observacoes ?? ''),
+    createdAt: d.createdAt?.toDate?.().toISOString() || String(d.createdAt ?? ''),
+    updatedAt: d.updatedAt?.toDate?.().toISOString() || String(d.updatedAt ?? ''),
+  } as ObraRDO;
+};
+
+export const upsertObraRDO = async (
+  obraId: string,
+  data: string,
+  payload: Omit<ObraRDO, 'id' | 'obraId' | 'data' | 'createdAt' | 'updatedAt'> & Partial<Pick<ObraRDO, 'clima' | 'condicao' | 'atividades' | 'efetivo' | 'equipamentos' | 'observacoes'>>
+): Promise<string> => {
+  const id = buildRDODocId(obraId, data);
+  const ref = doc(db, OBRA_RDOS_COLLECTION, id);
+  const existing = await getDoc(ref);
+
+  if (!existing.exists()) {
+    await setDoc(ref, {
+      ...defaultRDO(obraId, data),
+      ...payload,
+      obraId,
+      data,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    return id;
+  }
+
+  await updateDoc(ref, {
+    ...payload,
+    updatedAt: Timestamp.now(),
+  });
+  return id;
+};
+
+export const deleteObraRDO = async (obraId: string, data: string): Promise<void> => {
+  const id = buildRDODocId(obraId, data);
+  await deleteDoc(doc(db, OBRA_RDOS_COLLECTION, id));
 };
 
