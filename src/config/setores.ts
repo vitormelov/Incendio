@@ -75,11 +75,13 @@ export const obras: Obra[] = [
   {
     id: 'estacao-fashion',
     nome: 'Estação Fashion',
+    imageUrl: '/bg/estacaoFashion.jpg',
     setores: estacaoFashionSetores,
   },
   {
     id: 'termaco',
     nome: 'Termaco',
+    imageUrl: '/bg/termaco.jpg',
     setores: termacoSetores,
   },
 ];

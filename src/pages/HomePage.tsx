@@ -16,16 +16,31 @@ export default function HomePage() {
             <Link
               key={obra.id}
               to={`/obra/${obra.id}`}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+              className="group overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-black/5 transition-shadow hover:shadow-lg"
             >
-              <div className="flex items-center gap-4">
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <Building2 className="text-blue-600" size={32} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">{obra.nome}</h2>
-                  <p className="text-sm text-gray-600">Escolher setores, plantas e incêndios</p>
-                </div>
+              <div className="relative aspect-[16/9] w-full bg-gray-100">
+                {obra.imageUrl ? (
+                  <img
+                    src={obra.imageUrl}
+                    alt={obra.nome}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900">
+                    <div className="absolute inset-0 bg-black/20" />
+                    <div className="relative h-full w-full grid place-items-center">
+                      <div className="flex items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-white/95 ring-1 ring-white/20 backdrop-blur">
+                        <Building2 size={18} />
+                        <span className="text-sm font-semibold">Obra</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="px-5 py-4">
+                <h2 className="text-lg font-bold text-gray-900 leading-tight">{obra.nome}</h2>
               </div>
             </Link>
           ))}

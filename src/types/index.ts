@@ -33,6 +33,7 @@ export interface Setor {
 export interface Obra {
   id: string;
   nome: string;
+  imageUrl?: string | null;
   setores: Setor[];
 }
 
