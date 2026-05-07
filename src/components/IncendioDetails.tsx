@@ -14,9 +14,19 @@ interface IncendioDetailsProps {
   incendio: Incendio;
   onClose: () => void;
   onEdit: () => void;
+  onDelete?: () => void;
+  showEditButton?: boolean;
+  showDeleteButton?: boolean;
 }
 
-export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioDetailsProps) {
+export default function IncendioDetails({
+  incendio,
+  onClose,
+  onEdit,
+  onDelete,
+  showEditButton = true,
+  showDeleteButton = false,
+}: IncendioDetailsProps) {
   const setor = getSetorById(incendio.setor);
   const color = getDisciplinaColor(incendio.disciplina);
   const [criadorNome, setCriadorNome] = useState<string>('Carregando...');
@@ -234,12 +244,26 @@ export default function IncendioDetails({ incendio, onClose, onEdit }: IncendioD
             >
               Fechar
             </button>
-            <button
-              onClick={onEdit}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Editar
-            </button>
+            {showDeleteButton && onDelete && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Tem certeza que deseja excluir este incêndio?')) {
+                    onDelete();
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Excluir
+              </button>
+            )}
+            {showEditButton && (
+              <button
+                onClick={onEdit}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Editar
+              </button>
+            )}
           </div>
         </div>
       </div>

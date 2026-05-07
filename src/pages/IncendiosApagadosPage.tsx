@@ -3,26 +3,13 @@ import IncendioList from '../components/IncendioList';
 import { Incendio } from '../types';
 import { getIncendios, deleteIncendio } from '../services/firestore';
 import { CheckCircle } from 'lucide-react';
-import { canManageObraData } from '../services/auth';
 
 export default function IncendiosApagadosPage() {
   const [incendiosApagados, setIncendiosApagados] = useState<Incendio[]>([]);
   const [loading, setLoading] = useState(true);
-  const [canDeleteResolved, setCanDeleteResolved] = useState(false);
 
   useEffect(() => {
     loadIncendiosApagados();
-  }, []);
-
-  useEffect(() => {
-    const run = async () => {
-      try {
-        setCanDeleteResolved(await canManageObraData());
-      } catch {
-        setCanDeleteResolved(false);
-      }
-    };
-    void run();
   }, []);
 
   const loadIncendiosApagados = async () => {
@@ -83,12 +70,12 @@ export default function IncendiosApagadosPage() {
         <IncendioList
           incendios={incendiosApagados}
           onEdit={() => {}} // Não permite editar incêndios apagados
-          onDelete={canDeleteResolved ? handleDeleteIncendio : () => {}}
+          onDelete={handleDeleteIncendio}
           showResolveButton={false}
           showStatusFilter={false}
           showEditButton={false}
-          showDeleteButton={canDeleteResolved}
-          allowDelete={canDeleteResolved}
+          showDeleteButton={true}
+          allowDelete={true}
         />
       ) : (
         <div className="bg-white rounded-lg shadow p-12 text-center">

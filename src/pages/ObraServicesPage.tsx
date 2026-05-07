@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronRight, Pencil, Plus, Save, Trash2, Wrench, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Loader2, Pencil, Plus, Save, Trash2, Wrench, X } from 'lucide-react';
 import { getObraById } from '../config/setores';
-import { createObraService, deleteObraService, getObraServices, updateObraService } from '../services/firestore';
+import {
+  createObraService,
+  deleteObraService,
+  getObraServices,
+  updateObraService,
+  updateObraServicePackageOrder,
+  updateObraServiceItemOrder,
+} from '../services/firestore';
 import { ObraService } from '../types';
 import { canManageObraData } from '../services/auth';
 
@@ -12,6 +19,8 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 });
+
+const IMPLICIT_ORDER_BASE = 1_000_000;
 
 const emptyDraft: ServiceDraft = {
   pacote: '',
@@ -110,18 +119,115 @@ export default function ObraServicesPage() {
     }
 
     const entries = Array.from(map.entries()).map(([pacote, items]) => {
-      items.sort((a, b) => {
+      const withOrder = items.filter((s) => typeof s.serviceOrder === 'number') as Array<ObraService & { serviceOrder: number }>;
+      const withoutOrder = items.filter((s) => typeof s.serviceOrder !== 'number');
+
+      withOrder.sort((a, b) => {
+        if (a.serviceOrder !== b.serviceOrder) return a.serviceOrder - b.serviceOrder;
         const byDesc = a.descricao.localeCompare(b.descricao, 'pt-BR');
         if (byDesc !== 0) return byDesc;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
+
+      withoutOrder.sort((a, b) => {
+        const byDesc = a.descricao.localeCompare(b.descricao, 'pt-BR');
+        if (byDesc !== 0) return byDesc;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      const orderedItems = [...withOrder, ...withoutOrder].map((s, idx) => {
+        const effectiveOrder = typeof s.serviceOrder === 'number' ? s.serviceOrder : IMPLICIT_ORDER_BASE + idx;
+        return { ...s, serviceOrder: effectiveOrder } as ObraService & { serviceOrder: number };
+      });
       const subtotal = items.reduce((sum, s) => sum + (Number.isFinite(s.verba) ? s.verba : 0), 0);
-      return { pacote, items, subtotal };
+      const orderCandidates = items
+        .map((s) => (typeof s.pacoteOrder === 'number' ? s.pacoteOrder : Number.POSITIVE_INFINITY))
+        .filter((n) => Number.isFinite(n));
+      const pacoteOrder = orderCandidates.length > 0 ? Math.min(...orderCandidates) : Number.POSITIVE_INFINITY;
+      return { pacote, items: orderedItems, subtotal, pacoteOrder };
     });
 
-    entries.sort((a, b) => a.pacote.localeCompare(b.pacote, 'pt-BR'));
-    return entries;
+    const implicitPackages = entries
+      .filter((e) => !Number.isFinite(e.pacoteOrder))
+      .map((e) => e.pacote)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    const withDisplayOrder = entries.map((e) => {
+      const implicitIdx = !Number.isFinite(e.pacoteOrder) ? implicitPackages.indexOf(e.pacote) : -1;
+      const displayOrder = Number.isFinite(e.pacoteOrder) ? e.pacoteOrder : IMPLICIT_ORDER_BASE + Math.max(0, implicitIdx);
+      return { ...e, displayOrder };
+    });
+
+    withDisplayOrder.sort((a, b) => {
+      if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder;
+      return a.pacote.localeCompare(b.pacote, 'pt-BR');
+    });
+
+    return withDisplayOrder;
   }, [services]);
+
+  const handleMovePackage = async (pacote: string, direction: 'up' | 'down') => {
+    if (!obraId) return;
+    if (!canManage) return;
+
+    const idx = groupedByPackage.findIndex((g) => g.pacote === pacote);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= groupedByPackage.length) return;
+
+    const current = groupedByPackage[idx];
+    const target = groupedByPackage[targetIdx];
+
+    const currentOrder = current.displayOrder;
+    const targetOrder = target.displayOrder;
+
+    setError('');
+    setSuccess('');
+    setSavingId(`pkg:${current.pacote}`);
+    try {
+      await Promise.all([
+        updateObraServicePackageOrder(obraId, current.pacote, targetOrder),
+        updateObraServicePackageOrder(obraId, target.pacote, currentOrder),
+      ]);
+      await load();
+    } catch (err) {
+      console.error('Erro ao reordenar pacotes:', err);
+      setError('Não foi possível reordenar os pacotes.');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleMoveService = async (pacote: string, serviceId: string, direction: 'up' | 'down') => {
+    if (!canManage) return;
+    const group = groupedByPackage.find((g) => g.pacote === pacote);
+    if (!group) return;
+
+    const items = group.items;
+    const idx = items.findIndex((s) => s.id === serviceId);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+
+    const currentOrder = items[idx].serviceOrder ?? idx;
+    const targetOrder = items[targetIdx].serviceOrder ?? targetIdx;
+
+    setError('');
+    setSuccess('');
+    setSavingId(`svc:${serviceId}`);
+    try {
+      await Promise.all([
+        updateObraServiceItemOrder(items[idx].id, targetOrder),
+        updateObraServiceItemOrder(items[targetIdx].id, currentOrder),
+      ]);
+      await load();
+    } catch (err) {
+      console.error('Erro ao reordenar itens do pacote:', err);
+      setError('Não foi possível reordenar os itens do pacote.');
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   const totalVerba = useMemo(() => {
     return services.reduce((sum, s) => sum + (Number.isFinite(s.verba) ? s.verba : 0), 0);
@@ -156,9 +262,22 @@ export default function ObraServicesPage() {
 
     try {
       if (modalMode === 'create') {
+        const pacoteTrim = draft.pacote.trim();
+        const existing = groupedByPackage.find((g) => g.pacote === pacoteTrim);
+        const maxOrder = groupedByPackage.reduce((max, g) => Math.max(max, g.displayOrder), -1);
+        const pacoteOrder = existing ? existing.displayOrder : maxOrder + 1;
+
+        const maxServiceOrder =
+          existing?.items.reduce((max, s, i) => {
+            const v = typeof s.serviceOrder === 'number' ? s.serviceOrder : i;
+            return Math.max(max, v);
+          }, -1) ?? -1;
+
         await createObraService({
           obraId,
-          pacote: draft.pacote.trim(),
+          pacote: pacoteTrim,
+          pacoteOrder,
+          serviceOrder: maxServiceOrder + 1,
           descricao: draft.descricao.trim(),
           verba: draft.verba,
         });
@@ -295,10 +414,10 @@ export default function ObraServicesPage() {
               <button
                 type="button"
                 onClick={() => openCreateModal()}
-                className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="inline-flex items-center justify-center rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700"
+                title="Novo item"
               >
-                <Plus size={18} className="mr-2" />
-                Novo item
+                <Plus size={18} />
               </button>
             )}
           </div>
@@ -336,13 +455,35 @@ export default function ObraServicesPage() {
 
                     <div className="flex items-center gap-2">
                       {canManage && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => void handleMovePackage(group.pacote, 'up')}
+                            disabled={!!savingId}
+                            className="inline-flex items-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            title="Mover pacote para cima"
+                          >
+                            <ChevronUp size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleMovePackage(group.pacote, 'down')}
+                            disabled={!!savingId}
+                            className="inline-flex items-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            title="Mover pacote para baixo"
+                          >
+                            <ChevronDown size={16} />
+                          </button>
+                        </div>
+                      )}
+                      {canManage && (
                         <button
                           type="button"
                           onClick={() => openCreateModal({ pacote: group.pacote })}
-                          className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                          className="inline-flex items-center justify-center rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700"
+                          title="Novo item"
                         >
-                          <Plus size={16} className="mr-2" />
-                          Novo item
+                          <Plus size={16} />
                         </button>
                       )}
                     </div>
@@ -367,25 +508,49 @@ export default function ObraServicesPage() {
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex justify-end gap-2">
+                                  {canManage && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => void handleMoveService(group.pacote, service.id, 'up')}
+                                        disabled={!!savingId}
+                                        className="inline-flex items-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                        title="Mover item para cima"
+                                      >
+                                        <ChevronUp size={16} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => void handleMoveService(group.pacote, service.id, 'down')}
+                                        disabled={!!savingId}
+                                        className="inline-flex items-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                        title="Mover item para baixo"
+                                      >
+                                        <ChevronDown size={16} />
+                                      </button>
+                                    </div>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => openEditModal(service)}
                                       disabled={!canManage}
-                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                    className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                                       title={canManage ? 'Editar' : 'Sem permissão'}
                                   >
-                                    <Pencil size={16} className="mr-2" />
-                                    Editar
+                                    <Pencil size={16} />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => void handleDelete(service)}
                                       disabled={!canManage || deletingId === service.id}
-                                    className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                    className="inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white hover:bg-red-700 disabled:opacity-50"
                                       title={canManage ? 'Excluir' : 'Sem permissão'}
                                   >
-                                    <Trash2 size={16} className="mr-2" />
-                                    {deletingId === service.id ? 'Excluindo...' : 'Excluir'}
+                                    {deletingId === service.id ? (
+                                      <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                      <Trash2 size={16} />
+                                    )}
                                   </button>
                                 </div>
                               </td>

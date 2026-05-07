@@ -71,7 +71,8 @@ export default function IncendioForm({
               if (userDoc.exists() && userDoc.data().email === 'projetos@preferencial.eng.br') {
                 setCriadorNome('Vitor Viana');
               } else {
-                setCriadorNome(nome || incendio.criadoPor);
+                const data = userDoc.exists() ? userDoc.data() : null;
+                setCriadorNome(data?.nome || data?.email || 'Usuário desconhecido');
               }
             } else {
               setCriadorNome(nome);

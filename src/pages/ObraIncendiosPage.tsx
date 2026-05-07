@@ -3,8 +3,10 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, FileText, Flame, List } from 'lucide-react';
 import { getObraById, getSetoresByObraId } from '../config/setores';
 import IncendioList from '../components/IncendioList';
+import IncendioForm from '../components/IncendioForm';
 import { Incendio } from '../types';
-import { formatLocalDate, getIncendios, updateIncendio } from '../services/firestore';
+import { deleteIncendio, formatLocalDate, getIncendios, updateIncendio } from '../services/firestore';
+import { getCurrentUser } from '../services/auth';
 
 export default function ObraIncendiosPage() {
   const { obraId } = useParams<{ obraId: string }>();
@@ -12,6 +14,8 @@ export default function ObraIncendiosPage() {
   const [allIncendios, setAllIncendios] = useState<Incendio[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [errorList, setErrorList] = useState('');
+  const [selectedIncendio, setSelectedIncendio] = useState<Incendio | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   if (!obraId) {
     return (
@@ -60,6 +64,42 @@ export default function ObraIncendiosPage() {
     } catch (err) {
       console.error('Erro ao marcar incêndio como resolvido:', err);
       alert('Erro ao marcar incêndio como resolvido');
+    }
+  };
+
+  const handleDeleteIncendio = async (id: string) => {
+    try {
+      await deleteIncendio(id);
+      await loadAll();
+    } catch (err) {
+      console.error('Erro ao excluir incêndio:', err);
+      alert('Erro ao excluir incêndio');
+    }
+  };
+
+  const handleSaveEdit = async (incendioData: Omit<Incendio, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!selectedIncendio) return;
+
+    try {
+      const user = getCurrentUser();
+
+      // Mantém o criador original; se não existir, usa o usuário atual.
+      const criadoPorValue =
+        selectedIncendio.criadoPor ?? (user?.uid ? user.uid : undefined);
+
+      const { criadoPor: _, ...dataWithoutCriadoPor } = incendioData;
+      const dataToSave = {
+        ...dataWithoutCriadoPor,
+        criadoPor: criadoPorValue,
+      };
+
+      await updateIncendio(selectedIncendio.id, dataToSave);
+      await loadAll();
+      setShowForm(false);
+      setSelectedIncendio(null);
+    } catch (err) {
+      console.error('Erro ao editar incêndio:', err);
+      alert('Erro ao editar incêndio');
     }
   };
 
@@ -182,19 +222,36 @@ export default function ObraIncendiosPage() {
             ) : (
               <IncendioList
                 incendios={tab === 'incendios' ? incendiosAbertos : incendiosResolvidos}
-                onEdit={() => {}}
-                onDelete={() => {}}
+                onEdit={(inc) => {
+                  setSelectedIncendio(inc);
+                  setShowForm(true);
+                }}
+                onDelete={tab === 'resolvidos' ? handleDeleteIncendio : () => {}}
                 onResolve={tab === 'incendios' ? handleResolve : undefined}
                 showResolveButton={tab === 'incendios'}
                 showStatusFilter={tab === 'incendios'}
-                showEditButton={false}
-                showDeleteButton={false}
+                showEditButton={tab === 'incendios'}
+                showDeleteButton={tab === 'resolvidos'}
+                allowDelete={tab === 'resolvidos'}
                 hideObraSetorFilters={true}
               />
             )}
           </div>
         )}
       </div>
+
+      {showForm && selectedIncendio && (
+        <IncendioForm
+          incendio={selectedIncendio}
+          coordenadas={null}
+          onSave={handleSaveEdit}
+          onCancel={() => {
+            setShowForm(false);
+            setSelectedIncendio(null);
+          }}
+          setor={selectedIncendio.setor}
+        />
+      )}
     </div>
   );
 }

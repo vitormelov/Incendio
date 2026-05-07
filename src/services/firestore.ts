@@ -10,7 +10,8 @@ import {
   query, 
   where, 
   orderBy,
-  Timestamp 
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Incendio, Disciplina, Severidade, Collaborator, ObraNote, ObraService, UserPermission, ObraRDO, RDOClimaOpcao, RDOCondicaoOpcao, Turno } from '../types';
@@ -248,6 +249,8 @@ export const getObraServices = async (obraId: string): Promise<ObraService[]> =>
       id: snapshot.id,
       obraId: String(data.obraId ?? ''),
       pacote: String(data.pacote ?? ''),
+      pacoteOrder: typeof data.pacoteOrder === 'number' ? data.pacoteOrder : undefined,
+      serviceOrder: typeof data.serviceOrder === 'number' ? data.serviceOrder : undefined,
       descricao: String(data.descricao ?? ''),
       verba: typeof data.verba === 'number' ? data.verba : Number(data.verba ?? 0),
       dataInicio: data.dataInicio ? String(data.dataInicio) : null,
@@ -268,6 +271,8 @@ export const createObraService = async (
   const docRef = await addDoc(collection(db, OBRA_SERVICES_COLLECTION), {
     obraId: data.obraId,
     pacote: data.pacote,
+    pacoteOrder: typeof data.pacoteOrder === 'number' ? data.pacoteOrder : null,
+    serviceOrder: typeof data.serviceOrder === 'number' ? data.serviceOrder : null,
     descricao: data.descricao,
     verba: data.verba,
     dataInicio: data.dataInicio ?? null,
@@ -288,6 +293,32 @@ export const updateObraService = async (
     pacote: data.pacote,
     descricao: data.descricao,
     verba: data.verba,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const updateObraServicePackageOrder = async (
+  obraId: string,
+  pacote: string,
+  pacoteOrder: number
+): Promise<void> => {
+  const q = query(
+    collection(db, OBRA_SERVICES_COLLECTION),
+    where('obraId', '==', obraId),
+    where('pacote', '==', pacote)
+  );
+
+  const querySnapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  querySnapshot.docs.forEach((snap) => {
+    batch.update(snap.ref, { pacoteOrder, updatedAt: Timestamp.now() });
+  });
+  await batch.commit();
+};
+
+export const updateObraServiceItemOrder = async (serviceId: string, serviceOrder: number): Promise<void> => {
+  await updateDoc(doc(db, OBRA_SERVICES_COLLECTION, serviceId), {
+    serviceOrder,
     updatedAt: Timestamp.now(),
   });
 };

@@ -385,6 +385,18 @@ export default function IncendioList({
             setSelectedIncendio(null);
           }}
           onEdit={handleEditFromDetails}
+          onDelete={
+            showDeleteButton && canDelete
+              ? () => {
+                  setShowDetails(false);
+                  const id = selectedIncendio.id;
+                  setSelectedIncendio(null);
+                  onDelete(id);
+                }
+              : undefined
+          }
+          showEditButton={showEditButton}
+          showDeleteButton={showDeleteButton && canDelete}
         />
       )}
     </div>

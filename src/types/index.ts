@@ -41,6 +41,8 @@ export interface ObraService {
   id: string;
   obraId: string;
   pacote: string;
+  pacoteOrder?: number; // Ordem do pacote (para reordenar na lista)
+  serviceOrder?: number; // Ordem do item dentro do pacote
   descricao: string;
   verba: number;
   dataInicio?: string | null; // YYYY-MM-DD
