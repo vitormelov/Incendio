@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Save, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Save, CheckCircle2, AlertTriangle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { getObraServices, updateObraServicePlanning } from '../services/firestore';
 import { ObraService } from '../types';
@@ -8,6 +8,7 @@ import { canManageObraData } from '../services/auth';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const formatISODate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const IMPLICIT_ORDER_BASE = 1_000_000;
 
 const parseISODateLocal = (s: string): Date => {
   const [y, m, d] = s.split('-').map(Number);
@@ -35,6 +36,7 @@ export default function ObraPlanningPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [expandedPackages, setExpandedPackages] = useState<Set<string>>(() => new Set());
 
   const [refDate, setRefDate] = useState(() => formatISODate(new Date()));
 
@@ -80,8 +82,93 @@ export default function ObraPlanningPage() {
 
   const ref = useMemo(() => parseISODateLocal(refDate), [refDate]);
 
+  const orderedServices = useMemo(() => {
+    const byPackage = new Map<string, ObraService[]>();
+    for (const s of services) {
+      const pacote = (s.pacote || '').trim() || 'Sem pacote';
+      const list = byPackage.get(pacote) || [];
+      list.push(s);
+      byPackage.set(pacote, list);
+    }
+
+    const groups = Array.from(byPackage.entries()).map(([pacote, items]) => {
+      const orderCandidates = items
+        .map((s) => (typeof s.pacoteOrder === 'number' ? s.pacoteOrder : Number.POSITIVE_INFINITY))
+        .filter((n) => Number.isFinite(n));
+      const pacoteOrder = orderCandidates.length > 0 ? Math.min(...orderCandidates) : Number.POSITIVE_INFINITY;
+      return { pacote, pacoteOrder, items };
+    });
+
+    const implicitPackages = groups
+      .filter((g) => !Number.isFinite(g.pacoteOrder))
+      .map((g) => g.pacote)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    const withDisplayOrder = groups.map((g) => {
+      const implicitIdx = !Number.isFinite(g.pacoteOrder) ? implicitPackages.indexOf(g.pacote) : -1;
+      const displayOrder = Number.isFinite(g.pacoteOrder) ? g.pacoteOrder : IMPLICIT_ORDER_BASE + Math.max(0, implicitIdx);
+      return { ...g, displayOrder };
+    });
+
+    withDisplayOrder.sort((a, b) => {
+      if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder;
+      return a.pacote.localeCompare(b.pacote, 'pt-BR');
+    });
+
+    const ordered: ObraService[] = [];
+    for (const group of withDisplayOrder) {
+      const withOrder = group.items.filter((s) => typeof s.serviceOrder === 'number') as Array<ObraService & { serviceOrder: number }>;
+      const withoutOrder = group.items.filter((s) => typeof s.serviceOrder !== 'number');
+
+      withOrder.sort((a, b) => {
+        if (a.serviceOrder !== b.serviceOrder) return a.serviceOrder - b.serviceOrder;
+        const byDesc = a.descricao.localeCompare(b.descricao, 'pt-BR');
+        if (byDesc !== 0) return byDesc;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      withoutOrder.sort((a, b) => {
+        const byDesc = a.descricao.localeCompare(b.descricao, 'pt-BR');
+        if (byDesc !== 0) return byDesc;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      ordered.push(...withOrder, ...withoutOrder);
+    }
+
+    return ordered;
+  }, [services]);
+
+  const groupedByPackage = useMemo(() => {
+    const map = new Map<string, ObraService[]>();
+    for (const s of orderedServices) {
+      const pacote = (s.pacote || '').trim() || 'Sem pacote';
+      const list = map.get(pacote) || [];
+      list.push(s);
+      map.set(pacote, list);
+    }
+    return Array.from(map.entries()).map(([pacote, items]) => ({ pacote, items }));
+  }, [orderedServices]);
+
+  useEffect(() => {
+    // Se ainda não tem nada expandido, abre tudo (mesmo comportamento intuitivo de primeira carga)
+    setExpandedPackages((prev) => (prev.size === 0 ? new Set(groupedByPackage.map((g) => g.pacote)) : prev));
+  }, [groupedByPackage]);
+
+  const togglePackage = (pacote: string) => {
+    setExpandedPackages((prev) => {
+      const next = new Set(prev);
+      if (next.has(pacote)) next.delete(pacote);
+      else next.add(pacote);
+      return next;
+    });
+  };
+
+  const expandAll = () => setExpandedPackages(new Set(groupedByPackage.map((g) => g.pacote)));
+  const collapseAll = () => setExpandedPackages(new Set());
+
   const normalizedRows = useMemo(() => {
-    return services
+    return orderedServices
       .map((s) => {
         const d = draft[s.id];
         const start = d?.dataInicio ? parseISODateLocal(d.dataInicio) : null;
@@ -91,13 +178,14 @@ export default function ObraPlanningPage() {
         const inProgress = !!(start && end && ref >= start && ref <= end && !finalizado);
         const overdue = !!(end && ref > end && !finalizado);
         return { service: s, draft: d, start, end, duration, finalizado, inProgress, overdue };
-      })
-      .sort((a, b) => {
-        const pa = (a.service.pacote || '').localeCompare(b.service.pacote || '', 'pt-BR');
-        if (pa !== 0) return pa;
-        return a.service.descricao.localeCompare(b.service.descricao, 'pt-BR');
       });
-  }, [draft, ref, services]);
+  }, [draft, orderedServices, ref]);
+
+  const rowByServiceId = useMemo(() => {
+    const map = new Map<string, (typeof normalizedRows)[number]>();
+    for (const row of normalizedRows) map.set(row.service.id, row);
+    return map;
+  }, [normalizedRows]);
 
   const inProgressList = useMemo(
     () => normalizedRows.filter((r) => r.inProgress).map((r) => r.service),
@@ -251,85 +339,138 @@ export default function ObraPlanningPage() {
         ) : (
           <div className="space-y-6">
             <div className="rounded-lg border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 font-semibold text-gray-900">Atividades</div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-white">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pacote</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serviço</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Início</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Término</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duração (dias)</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Finalizado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {normalizedRows.map((row) => (
-                      <tr key={row.service.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.service.pacote}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{row.service.descricao}</td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="date"
-                            value={row.draft?.dataInicio ?? ''}
-                            onChange={(e) =>
-                              setDraft((c) => ({
-                                ...c,
-                                [row.service.id]: {
-                                  ...(c[row.service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
-                                  dataInicio: e.target.value,
-                                },
-                              }))
-                            }
-                            disabled={!canManage || saving}
-                            className="rounded-md border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="date"
-                            value={row.draft?.dataTermino ?? ''}
-                            onChange={(e) =>
-                              setDraft((c) => ({
-                                ...c,
-                                [row.service.id]: {
-                                  ...(c[row.service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
-                                  dataTermino: e.target.value,
-                                },
-                              }))
-                            }
-                            disabled={!canManage || saving}
-                            className="rounded-md border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                          {row.duration !== null ? row.duration : <span className="text-gray-400">-</span>}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <label className="inline-flex items-center justify-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={!!row.draft?.finalizado}
-                              onChange={(e) =>
-                                setDraft((c) => ({
-                                  ...c,
-                                  [row.service.id]: {
-                                    ...(c[row.service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
-                                    finalizado: e.target.checked,
-                                  },
-                                }))
-                              }
-                              disabled={!canManage || saving}
-                              className="h-4 w-4 rounded border-gray-300 text-slate-900 focus:ring-slate-900"
-                            />
-                            <span className="sr-only">Finalizado</span>
-                          </label>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="bg-gray-50 px-4 py-3 font-semibold text-gray-900 flex items-center justify-between gap-3">
+                <div>Atividades</div>
+                {groupedByPackage.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={expandAll}
+                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Expandir tudo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={collapseAll}
+                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Recolher tudo
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4 p-4">
+                {groupedByPackage.map((group) => {
+                  const isExpanded = expandedPackages.has(group.pacote);
+                  return (
+                    <div key={group.pacote} className="rounded-lg border border-gray-200 bg-white">
+                      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => togglePackage(group.pacote)}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                          title={isExpanded ? 'Recolher pacote' : 'Expandir pacote'}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown size={18} className="text-gray-600" />
+                          ) : (
+                            <ChevronRight size={18} className="text-gray-600" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-bold text-gray-900">{group.pacote}</div>
+                            <div className="text-xs text-gray-500">{group.items.length} item(ns)</div>
+                          </div>
+                        </button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serviço</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Início</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Término</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duração (dias)</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Finalizado</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 bg-white">
+                              {group.items.map((service) => {
+                                const row = rowByServiceId.get(service.id);
+                                if (!row) return null;
+                                return (
+                                  <tr key={service.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-700">{service.descricao}</td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="date"
+                                        value={row.draft?.dataInicio ?? ''}
+                                        onChange={(e) =>
+                                          setDraft((c) => ({
+                                            ...c,
+                                            [service.id]: {
+                                              ...(c[service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
+                                              dataInicio: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        disabled={!canManage || saving}
+                                        className="rounded-md border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="date"
+                                        value={row.draft?.dataTermino ?? ''}
+                                        onChange={(e) =>
+                                          setDraft((c) => ({
+                                            ...c,
+                                            [service.id]: {
+                                              ...(c[service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
+                                              dataTermino: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        disabled={!canManage || saving}
+                                        className="rounded-md border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                                      {row.duration !== null ? row.duration : <span className="text-gray-400">-</span>}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <label className="inline-flex items-center justify-center gap-2 text-sm">
+                                        <input
+                                          type="checkbox"
+                                          checked={!!row.draft?.finalizado}
+                                          onChange={(e) =>
+                                            setDraft((c) => ({
+                                              ...c,
+                                              [service.id]: {
+                                                ...(c[service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
+                                                finalizado: e.target.checked,
+                                              },
+                                            }))
+                                          }
+                                          disabled={!canManage || saving}
+                                          className="h-4 w-4 rounded border-gray-300 text-slate-900 focus:ring-slate-900"
+                                        />
+                                        <span className="sr-only">Finalizado</span>
+                                      </label>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
