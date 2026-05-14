@@ -150,6 +150,15 @@ export const getObraById = (id: string): Obra | undefined => {
   return obras.find((obra) => obra.id === id);
 };
 
+/** Lê `obraIdsPermitidos` do documento do usuário no Firestore. `null` = acesso a todas as obras cadastradas. */
+export function parseObraIdsPermitidosDoUsuario(data: Record<string, unknown>): string[] | null {
+  const valid = new Set(obras.map((o) => o.id));
+  if (!('obraIdsPermitidos' in data)) return null;
+  const raw = data.obraIdsPermitidos;
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((id): id is string => typeof id === 'string' && valid.has(id));
+}
+
 export const getSetoresByObraId = (obraId: string): Setor[] => {
   return getObraById(obraId)?.setores ?? [];
 };

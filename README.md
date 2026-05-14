@@ -9,13 +9,13 @@ Aplicação web para acompanhar obras de engenharia civil: problemas (“incênd
 - **Login** com e-mail e senha (`/login`), sessão via Firebase Authentication.
 - **Rotas protegidas**: páginas principais exigem usuário autenticado; sem sessão, redireciona para o login.
 - **Área administrativa** (`/admin`): visível na navegação só para o e-mail configurado como administrador em `src/services/auth.ts`. Inclui:
-  - **Colaboradores cadastrados** (`/admin/colaboradores`): listar e editar nome e permissões.
+  - **Colaboradores cadastrados** (`/admin/colaboradores`): listar e editar nome, permissão **Colaborador** (edição na obra) e **obras com acesso** (quais projetos o usuário pode abrir). Acesso à obra e papel de colaborador são independentes: sem Colaborador o usuário pode **só visualizar** as obras marcadas; com Colaborador, pode **editar** nas mesmas obras (e mais módulos, conforme a tela).
   - **Novo colaborador** (`/admin/novo-colaborador`): criar conta (Firebase) e registro em Firestore com permissão de colaborador.
-- **Colaboradores** com permissão adequada podem **criar, editar e excluir** dados da obra (serviços, notas, planejamento, RDO, vínculos em gastos), conforme `canManageObraData()` em `src/services/auth.ts`.
+- **Edição** nos módulos da obra (serviços, notas, planejamento, RDO, gastos, medição completa, incêndios no setor, etc.) exige ser **admin** ou **Colaborador** com acesso àquela obra; ver `canManageObraData(obraId)` em `src/services/auth.ts`.
 
 ### Home e obras
 
-- **Página inicial** (`/`): grade de **obras** configuradas em código; cada card leva ao **menu da obra** (`/obra/:obraId`).
+- **Página inicial** (`/`): grade de **obras** que o usuário pode acessar (para não administradores: obras marcadas no cadastro do colaborador; colaborador sem lista explícita no Firestore vê todas as obras cadastradas em código). Cada card leva ao **menu da obra** (`/obra/:obraId`).
 - Cada obra pode ter **imagem de capa** e um conjunto de **setores** (plantas/PDFs) definidos em `src/config/setores.ts`.
 
 ### Menu da obra (`/obra/:obraId`)
@@ -27,6 +27,7 @@ Aplicação web para acompanhar obras de engenharia civil: problemas (“incênd
   - **Serviços** — pacotes, itens e verba (BRL).
   - **Notas** — notas fiscais vinculáveis a serviços.
   - **Gastos** — acompanhamento de gastos (notas associadas a serviços × verba).
+  - **Medição** — planilhas de medição por obra (cliente e prestadores); ver seção abaixo.
   - **RDO** — lista de relatórios diários e edição por data.
 
 ### Incêndios (problemas na planta)
@@ -57,6 +58,16 @@ Aplicação web para acompanhar obras de engenharia civil: problemas (“incênd
 ### Gastos (`/obra/:obraId/gastos`)
 
 - Cruza **serviços (verba)** com **notas** através de vínculos editáveis; mostra totais gastos por serviço/pacote e notas sem vínculo.
+
+### Medição (`/obra/:obraId/medicao`)
+
+- **Duas famílias de planilha**, gravadas no Firestore na coleção **`obraMedicoes`** (documento por `obraId`):
+  - **Cliente × obra** — visível a quem acessa a obra; **edição** (colunas, valores, descontos, salvar) para admin/colaborador com permissão na obra. Quem não é colaborador vê em **leitura** esta visão e o resumo financeiro.
+  - **Obra × prestador** — até **cinco** planilhas independentes (vários prestadores por obra). Em cada uma há um campo **nome do prestador** (antes da tabela); o título da aba fica **Obra ×** *nome*. Cada planilha tem colunas de medição próprias, totais e descontos próprios.
+- **Linhas** alinhadas aos **serviços** da obra (pacotes na mesma ordem da página Serviços); botão para **sincronizar** com o cadastro de serviços. **Valor fechado** por linha (editável na medição).
+- **Colunas de medição** dinâmicas: em cada célula informa-se o **% executado** (0–100); o sistema calcula o **abatimento em R$** como `valor fechado × (% ÷ 100)`.
+- **Descontos** (uma vez por planilha, no **resumo** abaixo da tabela): **sinal** e **finalização** em **%** (0–100), aplicados sobre o **total abatido de cada coluna**. No **rodapé** da tabela aparecem, por coluna: total abatido, valor em R$ do sinal, valor em R$ da finalização e **valor real a ser pago** (abatido menos os dois descontos em R$). Há também totais no resumo (contratado, abatimentos, soma do valor real, etc.).
+- **Permissões**: usuários com papel de colaborador e edição na obra acessam todas as abas e editam **Cliente × obra** e as planilhas **Obra × prestador**; os demais permanecem na visão cliente × obra em modo leitura (sem abas de prestador).
 
 ### RDO — Relatório Diário de Obra
 
@@ -139,7 +150,7 @@ src/
 
 1. Faça **login**.
 2. Na **home**, escolha uma **obra**.
-3. No **menu da obra**, abra o módulo desejado (incêndios, dashboard, planejamento, serviços, notas, gastos, RDO).
+3. No **menu da obra**, abra o módulo desejado (incêndios, dashboard, planejamento, serviços, notas, gastos, medição, RDO).
 4. Em **Incêndios → Projetos**, entre no **setor**; no PDF, **clique** para criar ou **clique na marcação** para editar.
 5. Administradores: **Admin** para gerir **colaboradores**.
 

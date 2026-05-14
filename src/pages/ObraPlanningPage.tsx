@@ -42,14 +42,18 @@ export default function ObraPlanningPage() {
 
   useEffect(() => {
     const run = async () => {
+      if (!obraId) {
+        setCanManage(false);
+        return;
+      }
       try {
-        setCanManage(await canManageObraData());
+        setCanManage(await canManageObraData(obraId));
       } catch {
         setCanManage(false);
       }
     };
     void run();
-  }, []);
+  }, [obraId]);
 
   const load = async () => {
     if (!obraId) return;

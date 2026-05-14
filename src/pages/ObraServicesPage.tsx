@@ -70,14 +70,18 @@ export default function ObraServicesPage() {
 
   useEffect(() => {
     const run = async () => {
+      if (!obraId) {
+        setCanManage(false);
+        return;
+      }
       try {
-        setCanManage(await canManageObraData());
+        setCanManage(await canManageObraData(obraId));
       } catch {
         setCanManage(false);
       }
     };
     void run();
-  }, []);
+  }, [obraId]);
 
   const validateDraft = (draft: ServiceDraft): string | null => {
     if (!draft.pacote.trim()) return 'O pacote do serviço é obrigatório.';

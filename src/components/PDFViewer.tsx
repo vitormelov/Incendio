@@ -14,6 +14,8 @@ interface PDFViewerProps {
   onAddMark: (x: number, y: number, page: number) => void;
   onMarkClick: (incendio: Incendio) => void;
   selectedIncendio?: Incendio | null;
+  /** Se false, não cria nova marcação ao clicar em área vazia (somente leitura). */
+  allowCreateMarks?: boolean;
 }
 
 export default function PDFViewer({ 
@@ -21,7 +23,8 @@ export default function PDFViewer({
   incendios, 
   onAddMark, 
   onMarkClick,
-  selectedIncendio 
+  selectedIncendio,
+  allowCreateMarks = true,
 }: PDFViewerProps) {
   const [scale, setScale] = useState<number>(1.0);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -69,10 +72,10 @@ export default function PDFViewer({
 
     if (clickedIncendio) {
       onMarkClick(clickedIncendio);
-    } else {
+    } else if (allowCreateMarks) {
       onAddMark(x, y, currentPage);
     }
-  }, [incendios, currentPage, onAddMark, onMarkClick]);
+  }, [incendios, currentPage, onAddMark, onMarkClick, allowCreateMarks]);
 
   const currentPageIncendios = incendios.filter(i => i.coordenadas.page === currentPage);
 

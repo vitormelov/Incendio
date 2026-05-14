@@ -158,6 +158,12 @@ export interface Collaborator {
   nome: string;
   email: string;
   permissions: UserPermission[];
+  /**
+   * Obras que o usuário pode abrir (visualização). Independente da permissão Colaborador.
+   * `null` com colaborador = todas as obras (campo ausente no Firestore). Sem colaborador, “todas” na UI grava lista explícita.
+   * Array vazio = nenhuma obra.
+   */
+  obraIdsPermitidos: string[] | null;
   createdAt: string | null;
   updatedAt?: string | null;
 }

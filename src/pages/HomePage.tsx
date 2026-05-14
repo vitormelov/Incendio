@@ -1,8 +1,49 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { obras } from '../config/setores';
+import type { Obra } from '../types';
 import { Building2 } from 'lucide-react';
+import { getCurrentUser, isAdmin, getUserFirestoreProfile } from '../services/auth';
 
 export default function HomePage() {
+  const [visibleObras, setVisibleObras] = useState<Obra[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const user = getCurrentUser();
+      if (!user) {
+        if (!cancelled) setVisibleObras([]);
+        return;
+      }
+      if (isAdmin(user)) {
+        if (!cancelled) setVisibleObras(obras);
+        return;
+      }
+      const profile = await getUserFirestoreProfile(user.uid);
+      if (cancelled) return;
+      const isCollab = profile.permissions.includes('colaborador');
+      if (profile.obraIdsPermitidos === null) {
+        setVisibleObras(isCollab ? obras : []);
+      } else {
+        setVisibleObras(obras.filter((o) => profile.obraIdsPermitidos!.includes(o.id)));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (visibleObras === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-gray-600">
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-violet-600 mb-3" />
+          <p>Carregando obras…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -11,8 +52,15 @@ export default function HomePage() {
           <p className="text-xl text-gray-600">Sistema de Gestão de Problemas em Obra</p>
         </div>
 
+        {visibleObras.length === 0 && (
+          <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
+            Nenhuma obra está liberada para sua conta. Peça ao administrador para marcar ao menos uma obra com acesso
+            para o seu usuário na página de Colaboradores.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {obras.map((obra) => (
+          {visibleObras.map((obra) => (
             <Link
               key={obra.id}
               to={`/obra/${obra.id}`}
@@ -49,4 +97,3 @@ export default function HomePage() {
     </div>
   );
 }
-

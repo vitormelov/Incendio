@@ -6,7 +6,7 @@ import IncendioList from '../components/IncendioList';
 import IncendioForm from '../components/IncendioForm';
 import { Incendio } from '../types';
 import { deleteIncendio, formatLocalDate, getIncendios, updateIncendio } from '../services/firestore';
-import { getCurrentUser } from '../services/auth';
+import { getCurrentUser, canManageObraData } from '../services/auth';
 
 export default function ObraIncendiosPage() {
   const { obraId } = useParams<{ obraId: string }>();
@@ -16,17 +16,25 @@ export default function ObraIncendiosPage() {
   const [errorList, setErrorList] = useState('');
   const [selectedIncendio, setSelectedIncendio] = useState<Incendio | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [canManage, setCanManage] = useState(false);
 
-  if (!obraId) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-gray-500">Obra não encontrada.</p>
-      </div>
-    );
-  }
+  const obra = obraId ? getObraById(obraId) : undefined;
+  const setores = obraId ? getSetoresByObraId(obraId) : [];
 
-  const obra = getObraById(obraId);
-  const setores = getSetoresByObraId(obraId);
+  useEffect(() => {
+    const run = async () => {
+      if (!obraId) {
+        setCanManage(false);
+        return;
+      }
+      try {
+        setCanManage(await canManageObraData(obraId));
+      } catch {
+        setCanManage(false);
+      }
+    };
+    void run();
+  }, [obraId]);
 
   const loadAll = async () => {
     try {
@@ -102,6 +110,14 @@ export default function ObraIncendiosPage() {
       alert('Erro ao editar incêndio');
     }
   };
+
+  if (!obraId) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-gray-500">Obra não encontrada.</p>
+      </div>
+    );
+  }
 
   if (!obra) {
     return (
@@ -226,13 +242,13 @@ export default function ObraIncendiosPage() {
                   setSelectedIncendio(inc);
                   setShowForm(true);
                 }}
-                onDelete={tab === 'resolvidos' ? handleDeleteIncendio : () => {}}
-                onResolve={tab === 'incendios' ? handleResolve : undefined}
-                showResolveButton={tab === 'incendios'}
+                onDelete={tab === 'resolvidos' && canManage ? handleDeleteIncendio : () => {}}
+                onResolve={tab === 'incendios' && canManage ? handleResolve : undefined}
+                showResolveButton={tab === 'incendios' && canManage}
                 showStatusFilter={tab === 'incendios'}
-                showEditButton={tab === 'incendios'}
-                showDeleteButton={tab === 'resolvidos'}
-                allowDelete={tab === 'resolvidos'}
+                showEditButton={tab === 'incendios' && canManage}
+                showDeleteButton={tab === 'resolvidos' && canManage}
+                allowDelete={tab === 'resolvidos' && canManage}
                 hideObraSetorFilters={true}
               />
             )}
@@ -240,7 +256,7 @@ export default function ObraIncendiosPage() {
         )}
       </div>
 
-      {showForm && selectedIncendio && (
+      {canManage && showForm && selectedIncendio && (
         <IncendioForm
           incendio={selectedIncendio}
           coordenadas={null}

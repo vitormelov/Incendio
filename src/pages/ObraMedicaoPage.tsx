@@ -272,14 +272,18 @@ export default function ObraMedicaoPage() {
 
   useEffect(() => {
     const run = async () => {
+      if (!obraId) {
+        setCanManage(false);
+        return;
+      }
       try {
-        setCanManage(await canManageObraData());
+        setCanManage(await canManageObraData(obraId));
       } catch {
         setCanManage(false);
       }
     };
     void run();
-  }, []);
+  }, [obraId]);
 
   useEffect(() => {
     if (!canManage && typeof activeTab === 'number') {
@@ -584,8 +588,8 @@ export default function ObraMedicaoPage() {
 
         {readOnly && (
           <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-            Visualização da medição <strong>cliente × obra</strong>. Apenas colaboradores editam e visualizam a medição
-            com prestadores de serviço.
+            Modo leitura nesta obra: você pode ver a medição <strong>cliente × obra</strong>. A edição e as abas{' '}
+            <strong>Obra × prestador</strong> ficam para quem tem permissão de <strong>Colaborador</strong> nesta obra.
           </div>
         )}
 

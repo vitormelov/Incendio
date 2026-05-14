@@ -3,10 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 import PDFViewer from '../components/PDFViewer';
 import IncendioForm from '../components/IncendioForm';
 import IncendioList from '../components/IncendioList';
+import IncendioDetails from '../components/IncendioDetails';
 import { Incendio } from '../types';
 import { getObraIdForSetor, getSetorById } from '../config/setores';
 import { getIncendios, createIncendio, updateIncendio, deleteIncendio } from '../services/firestore';
-import { getCurrentUser } from '../services/auth';
+import { getCurrentUser, canManageObraData } from '../services/auth';
 import { ArrowLeft, List, Layout } from 'lucide-react';
 
 export default function SetorPage() {
@@ -16,10 +17,27 @@ export default function SetorPage() {
   const [showForm, setShowForm] = useState(false);
   const [formCoordenadas, setFormCoordenadas] = useState<{ x: number; y: number; page: number } | null>(null);
   const [viewMode, setViewMode] = useState<'pdf' | 'list'>('pdf');
+  const [canManage, setCanManage] = useState(false);
+  const [viewDetailsIncendio, setViewDetailsIncendio] = useState<Incendio | null>(null);
 
   const setor = setorId ? getSetorById(setorId) : null;
   const obraIdForSetor = setorId ? getObraIdForSetor(setorId) : undefined;
   const voltarHref = obraIdForSetor ? `/obra/${obraIdForSetor}/incendios` : '/';
+
+  useEffect(() => {
+    const run = async () => {
+      if (!obraIdForSetor) {
+        setCanManage(false);
+        return;
+      }
+      try {
+        setCanManage(await canManageObraData(obraIdForSetor));
+      } catch {
+        setCanManage(false);
+      }
+    };
+    void run();
+  }, [obraIdForSetor]);
 
   useEffect(() => {
     if (setorId) {
@@ -44,10 +62,14 @@ export default function SetorPage() {
     setShowForm(true);
   };
 
-  const handleMarkClick = (incendio: Incendio) => {
-    setSelectedIncendio(incendio);
-    setFormCoordenadas(null);
-    setShowForm(true);
+  const handlePdfMarkClick = (incendio: Incendio) => {
+    if (canManage) {
+      setSelectedIncendio(incendio);
+      setFormCoordenadas(null);
+      setShowForm(true);
+    } else {
+      setViewDetailsIncendio(incendio);
+    }
   };
 
   const handleSave = async (incendioData: Omit<Incendio, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -142,8 +164,9 @@ export default function SetorPage() {
             pdfPath={setor.pdfPath}
             incendios={incendios}
             onAddMark={handleAddMark}
-            onMarkClick={handleMarkClick}
+            onMarkClick={handlePdfMarkClick}
             selectedIncendio={selectedIncendio}
+            allowCreateMarks={canManage}
           />
         ) : (
           <div className="h-full overflow-auto p-4">
@@ -154,15 +177,16 @@ export default function SetorPage() {
                 setFormCoordenadas(null);
                 setShowForm(true);
               }}
-              onDelete={handleDelete}
+              onDelete={canManage ? handleDelete : () => {}}
               setor={setorId}
+              showEditButton={canManage}
+              showDeleteButton={canManage}
             />
           </div>
         )}
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
+      {canManage && showForm && (
         <IncendioForm
           incendio={selectedIncendio}
           coordenadas={formCoordenadas}
@@ -174,6 +198,31 @@ export default function SetorPage() {
             setFormCoordenadas(null);
           }}
           setor={setorId!}
+        />
+      )}
+
+      {viewDetailsIncendio && (
+        <IncendioDetails
+          incendio={viewDetailsIncendio}
+          onClose={() => setViewDetailsIncendio(null)}
+          onEdit={() => {
+            setViewDetailsIncendio(null);
+            setSelectedIncendio(viewDetailsIncendio);
+            setFormCoordenadas(null);
+            setShowForm(true);
+          }}
+          onDelete={
+            canManage
+              ? () => {
+                  if (window.confirm('Tem certeza que deseja excluir este incêndio?')) {
+                    void handleDelete(viewDetailsIncendio.id);
+                    setViewDetailsIncendio(null);
+                  }
+                }
+              : undefined
+          }
+          showEditButton={canManage}
+          showDeleteButton={canManage}
         />
       )}
     </div>

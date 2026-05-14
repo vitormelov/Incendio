@@ -72,14 +72,18 @@ export default function ObraNotesPage() {
 
   useEffect(() => {
     const run = async () => {
+      if (!obraId) {
+        setCanManage(false);
+        return;
+      }
       try {
-        setCanManage(await canManageObraData());
+        setCanManage(await canManageObraData(obraId));
       } catch {
         setCanManage(false);
       }
     };
     void run();
-  }, []);
+  }, [obraId]);
 
   const validateDraft = (draft: NoteDraft): string | null => {
     if (!draft.numero.trim()) return 'O número da nota é obrigatório.';

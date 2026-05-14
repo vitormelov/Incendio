@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { login, getCurrentUser, onAuthChange } from '../services/auth';
+import { login, getCurrentUser, onAuthChange, clearPermissionsCache } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -34,6 +34,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      clearPermissionsCache();
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login.');

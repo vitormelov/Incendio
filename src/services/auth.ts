@@ -11,6 +11,7 @@ import { auth } from '../firebase/config';
 import { db, firebaseConfig } from '../firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { UserPermission } from '../types';
+import { getObraById, parseObraIdsPermitidosDoUsuario } from '../config/setores';
 
 const ADMIN_EMAIL = 'projetos@preferencial.eng.br';
 
@@ -100,49 +101,85 @@ export const isAdmin = (user: User | null): boolean => {
   return user?.email === ADMIN_EMAIL;
 };
 
-const permissionsCache = new Map<string, UserPermission[]>();
+type UserFirestoreProfile = {
+  permissions: UserPermission[];
+  /** `null` = todas as obras; array = apenas IDs listados (pode ser vazio). */
+  obraIdsPermitidos: string[] | null;
+};
 
-export const getUserPermissions = async (uid: string): Promise<UserPermission[]> => {
-  const cached = permissionsCache.get(uid);
-  if (cached) return cached;
+const userProfileCache = new Map<string, UserFirestoreProfile>();
 
+const fetchUserProfileFromFirestore = async (uid: string): Promise<UserFirestoreProfile> => {
   try {
     const snap = await getDoc(doc(db, 'users', uid));
     if (!snap.exists()) {
-      permissionsCache.set(uid, []);
-      return [];
+      return { permissions: [], obraIdsPermitidos: [] };
     }
-
     const data = snap.data();
     const permissions = Array.isArray(data.permissions)
       ? (data.permissions.filter((p: unknown): p is UserPermission => p === 'colaborador') as UserPermission[])
       : [];
-
-    permissionsCache.set(uid, permissions);
-    return permissions;
+    const obraIdsPermitidos = parseObraIdsPermitidosDoUsuario(data as Record<string, unknown>);
+    return { permissions, obraIdsPermitidos };
   } catch (error) {
-    console.error('Erro ao buscar permissões do usuário:', error);
-    return [];
+    console.error('Erro ao buscar perfil do usuário:', error);
+    return { permissions: [], obraIdsPermitidos: [] };
   }
 };
 
-export const getCurrentUserPermissions = async (): Promise<UserPermission[]> => {
-  const user = getCurrentUser();
-  if (!user) return [];
-  return await getUserPermissions(user.uid);
+export const getUserFirestoreProfile = async (uid: string): Promise<UserFirestoreProfile> => {
+  const cached = userProfileCache.get(uid);
+  if (cached) return cached;
+  const profile = await fetchUserProfileFromFirestore(uid);
+  userProfileCache.set(uid, profile);
+  return profile;
 };
 
-export const canManageObraData = async (): Promise<boolean> => {
+/**
+ * Se o usuário pode abrir esta obra para visualização (independente de ser colaborador).
+ * - Admin: sempre.
+ * - Colaborador com `obraIdsPermitidos` ausente (null): todas as obras.
+ * - Demais: só obras listadas em `obraIdsPermitidos` (array vazio = nenhuma).
+ */
+function profileAllowsObraAccess(
+  profile: UserFirestoreProfile,
+  obraId: string,
+  treatNullAsAllObras: boolean
+): boolean {
+  if (profile.obraIdsPermitidos === null) {
+    return treatNullAsAllObras;
+  }
+  return profile.obraIdsPermitidos.includes(obraId);
+}
+
+/** Pode abrir a obra (visualização). Obras marcadas valem para todos; null = todas só para quem tem obra na lista implícita via colaborador+null = todas. */
+export const canUserAccessObraId = async (obraId: string): Promise<boolean> => {
   const user = getCurrentUser();
   if (!user) return false;
   if (isAdmin(user)) return true;
-  const permissions = await getUserPermissions(user.uid);
-  return permissions.includes('colaborador');
+  if (!getObraById(obraId)) return false;
+  const profile = await getUserFirestoreProfile(user.uid);
+  const isCollab = profile.permissions.includes('colaborador');
+  return profileAllowsObraAccess(profile, obraId, isCollab);
+};
+
+/**
+ * Pode editar dados da obra nesta rota (serviços, notas, medição, etc.).
+ * Admin sempre; demais precisam ser colaborador e ter acesso à obra (mesma regra de obras marcadas).
+ */
+export const canManageObraData = async (obraId: string): Promise<boolean> => {
+  const user = getCurrentUser();
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  if (!getObraById(obraId)) return false;
+  const profile = await getUserFirestoreProfile(user.uid);
+  if (!profile.permissions.includes('colaborador')) return false;
+  return profileAllowsObraAccess(profile, obraId, true);
 };
 
 export const clearPermissionsCache = (uid?: string) => {
-  if (uid) permissionsCache.delete(uid);
-  else permissionsCache.clear();
+  if (uid) userProfileCache.delete(uid);
+  else userProfileCache.clear();
 };
 
 export const onAuthChange = (callback: (user: User | null) => void) => {

@@ -128,14 +128,18 @@ export default function ObraRDOPage() {
 
   useEffect(() => {
     const run = async () => {
+      if (!obraId) {
+        setCanManage(false);
+        return;
+      }
       try {
-        setCanManage(await canManageObraData());
+        setCanManage(await canManageObraData(obraId));
       } catch {
         setCanManage(false);
       }
     };
     void run();
-  }, []);
+  }, [obraId]);
 
   useEffect(() => {
     if (!obraId) return;

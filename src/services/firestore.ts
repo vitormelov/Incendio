@@ -11,9 +11,11 @@ import {
   where, 
   orderBy,
   Timestamp,
-  writeBatch
+  writeBatch,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { parseObraIdsPermitidosDoUsuario } from '../config/setores';
 import {
   Incendio,
   Disciplina,
@@ -280,6 +282,7 @@ export const getCollaborators = async (): Promise<Collaborator[]> => {
         nome: data.nome || '',
         email: data.email || '',
         permissions,
+        obraIdsPermitidos: parseObraIdsPermitidosDoUsuario(data as Record<string, unknown>),
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       };
@@ -293,13 +296,20 @@ export const deleteCollaborator = async (userId: string): Promise<void> => {
 
 export const updateCollaborator = async (
   userId: string,
-  data: Pick<Collaborator, 'nome' | 'permissions'>
+  data: Pick<Collaborator, 'nome' | 'permissions' | 'obraIdsPermitidos'>
 ): Promise<void> => {
-  await updateDoc(doc(db, USERS_COLLECTION, userId), {
+  const ref = doc(db, USERS_COLLECTION, userId);
+  const payload: Record<string, unknown> = {
     nome: data.nome,
     permissions: data.permissions,
     updatedAt: new Date().toISOString(),
-  });
+  };
+  if (data.obraIdsPermitidos === null) {
+    payload.obraIdsPermitidos = deleteField();
+  } else {
+    payload.obraIdsPermitidos = data.obraIdsPermitidos;
+  }
+  await updateDoc(ref, payload);
 };
 
 export const getIncendios = async (setor?: string): Promise<Incendio[]> => {

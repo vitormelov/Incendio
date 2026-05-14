@@ -20,11 +20,13 @@ import IncendioList from './components/IncendioList';
 import IncendioForm from './components/IncendioForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
+import ProtectedObraRoute from './components/ProtectedObraRoute';
+import ProtectedSetorRoute from './components/ProtectedSetorRoute';
 import Logo from './components/Logo';
 import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
-import { getCurrentUser, logout, onAuthChange, isAdmin } from './services/auth';
+import { getCurrentUser, logout, onAuthChange, isAdmin, clearPermissionsCache } from './services/auth';
 import { Home, LogOut, User, Shield, Menu, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -72,6 +74,8 @@ function App() {
 
   const handleLogout = async () => {
     try {
+      const u = getCurrentUser();
+      if (u) clearPermissionsCache(u.uid);
       await logout();
       window.location.href = '/login';
     } catch (error) {
@@ -235,7 +239,9 @@ function App() {
             path="/obra/:obraId"
             element={
               <ProtectedRoute>
-                <ObraPage />
+                <ProtectedObraRoute>
+                  <ObraPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -243,7 +249,9 @@ function App() {
             path="/obra/:obraId/incendios"
             element={
               <ProtectedRoute>
-                <ObraIncendiosPage />
+                <ProtectedObraRoute>
+                  <ObraIncendiosPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -251,7 +259,9 @@ function App() {
             path="/obra/:obraId/servicos"
             element={
               <ProtectedRoute>
-                <ObraServicesPage />
+                <ProtectedObraRoute>
+                  <ObraServicesPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -259,7 +269,9 @@ function App() {
             path="/obra/:obraId/notas"
             element={
               <ProtectedRoute>
-                <ObraNotesPage />
+                <ProtectedObraRoute>
+                  <ObraNotesPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -267,7 +279,9 @@ function App() {
             path="/obra/:obraId/medicao"
             element={
               <ProtectedRoute>
-                <ObraMedicaoPage />
+                <ProtectedObraRoute>
+                  <ObraMedicaoPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -275,7 +289,9 @@ function App() {
             path="/obra/:obraId/gastos"
             element={
               <ProtectedRoute>
-                <ObraGastosPage />
+                <ProtectedObraRoute>
+                  <ObraGastosPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -283,7 +299,9 @@ function App() {
             path="/obra/:obraId/planejamento"
             element={
               <ProtectedRoute>
-                <ObraPlanningPage />
+                <ProtectedObraRoute>
+                  <ObraPlanningPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -291,7 +309,9 @@ function App() {
             path="/obra/:obraId/rdo/lista"
             element={
               <ProtectedRoute>
-                <ObraRDOListPage />
+                <ProtectedObraRoute>
+                  <ObraRDOListPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -299,7 +319,9 @@ function App() {
             path="/obra/:obraId/rdo"
             element={
               <ProtectedRoute>
-                <ObraRDOPage />
+                <ProtectedObraRoute>
+                  <ObraRDOPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
@@ -307,7 +329,9 @@ function App() {
             path="/setor/:setorId"
             element={
               <ProtectedRoute>
-                <SetorPage />
+                <ProtectedSetorRoute>
+                  <SetorPage />
+                </ProtectedSetorRoute>
               </ProtectedRoute>
             }
           />
@@ -315,7 +339,9 @@ function App() {
             path="/obra/:obraId/dashboard"
             element={
               <ProtectedRoute>
-                <ObraDashboardPage />
+                <ProtectedObraRoute>
+                  <ObraDashboardPage />
+                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />

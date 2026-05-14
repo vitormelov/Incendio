@@ -53,14 +53,18 @@ export default function ObraRDOListPage() {
 
   useEffect(() => {
     const run = async () => {
+      if (!obraId) {
+        setCanManage(false);
+        return;
+      }
       try {
-        setCanManage(await canManageObraData());
+        setCanManage(await canManageObraData(obraId));
       } catch {
         setCanManage(false);
       }
     };
     void run();
-  }, []);
+  }, [obraId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -153,7 +157,8 @@ export default function ObraRDOListPage() {
 
         {!canManage && (
           <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-yellow-800">
-            Você pode visualizar a lista e abrir cada RDO em modo leitura. Apenas colaboradores autorizados podem editar ou excluir.
+            Você pode visualizar a lista e abrir cada RDO em modo leitura. Editar ou excluir exige permissão de
+            colaborador <em>e</em> acesso de edição nesta obra.
           </div>
         )}
 
