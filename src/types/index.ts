@@ -52,6 +52,52 @@ export interface ObraService {
   updatedAt: string;
 }
 
+/** Abatimento (R$) da célula = valor fechado × (medição % ÷ 100). Sinal e finalização são % únicos no resumo. */
+export interface MedicaoCelula {
+  percentualExecutado: number;
+  abatimentoValor: number;
+}
+
+export interface MedicaoColuna {
+  id: string;
+  titulo: string;
+}
+
+export interface MedicaoLinha {
+  id: string;
+  serviceId: string | null;
+  pacote: string;
+  descricao: string;
+  valorFechado: number;
+  /** Chave = id da coluna de medição */
+  celulas: Record<string, MedicaoCelula>;
+}
+
+export interface ObraMedicaoBloco {
+  colunas: MedicaoColuna[];
+  linhas: MedicaoLinha[];
+  /** Desconto de sinal (%), uma vez no resumo — aplicado sobre o total abatido de cada coluna */
+  descontoSinalPercent: number;
+  /** Desconto de finalização (%), uma vez no resumo */
+  descontoFinalizacaoPercent: number;
+}
+
+/** Quantidade de planilhas “Obra × prestador” (uma obra costuma ter mais de um prestador). */
+export const OBRA_MEDICAO_PRESTADOR_SLOTS = 5;
+
+export interface ObraMedicaoPrestadorSheet {
+  nomePrestador: string;
+  bloco: ObraMedicaoBloco;
+}
+
+export interface ObraMedicao {
+  obraId: string;
+  clienteObra: ObraMedicaoBloco;
+  prestadoresMedicoes: ObraMedicaoPrestadorSheet[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ObraNote {
   id: string;
   obraId: string;

@@ -71,6 +71,54 @@ const termacoSetores: Setor[] = [
   },
 ];
 
+const hotelCentralSetores: Setor[] = [
+  {
+    id: 'hotel-central-fachada',
+    nome: 'Fachada',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-fachada.pdf',
+  },
+  {
+    id: 'hotel-central-subsolo',
+    nome: 'Subsolo',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-subsolo.pdf',
+  },
+  {
+    id: 'hotel-central-terreo',
+    nome: 'Térreo',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-terreo.pdf',
+  },
+  {
+    id: 'hotel-central-tipo',
+    nome: 'Planta tipo',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-tipo.pdf',
+  },
+  {
+    id: 'hotel-central-corte',
+    nome: 'Corte',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-corte.pdf',
+  },
+  {
+    id: 'hotel-central-cobertura',
+    nome: 'Cobertura',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-cobertura.pdf',
+  },
+  {
+    id: 'hotel-central-convencoes',
+    nome: 'Convenções',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-convencoes.pdf',
+  },
+  {
+    id: 'hotel-central-restaurante',
+    nome: 'Restaurante',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-restaurante.pdf',
+  },
+  {
+    id: 'hotel-central-fitness',
+    nome: 'Fitness',
+    pdfPath: '/pdfs/hotelCentral/hotel-central-fitness.pdf',
+  },
+];
+
 export const obras: Obra[] = [
   {
     id: 'estacao-fashion',
@@ -83,6 +131,12 @@ export const obras: Obra[] = [
     nome: 'Termaco',
     imageUrl: '/bg/termaco.jpg',
     setores: termacoSetores,
+  },
+  {
+    id: 'hotel-central',
+    nome: 'Hotel Central',
+    imageUrl: '/bg/hotelCentral.jpeg',
+    setores: hotelCentralSetores,
   },
 ];
 

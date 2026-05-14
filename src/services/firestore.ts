@@ -14,13 +14,176 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Incendio, Disciplina, Severidade, Collaborator, ObraNote, ObraService, UserPermission, ObraRDO, RDOClimaOpcao, RDOCondicaoOpcao, Turno } from '../types';
+import {
+  Incendio,
+  Disciplina,
+  Severidade,
+  Collaborator,
+  ObraNote,
+  ObraService,
+  UserPermission,
+  ObraRDO,
+  RDOClimaOpcao,
+  RDOCondicaoOpcao,
+  Turno,
+  ObraMedicao,
+  ObraMedicaoBloco,
+  ObraMedicaoPrestadorSheet,
+  OBRA_MEDICAO_PRESTADOR_SLOTS,
+  MedicaoLinha,
+  MedicaoColuna,
+  MedicaoCelula,
+} from '../types';
 
 const INCENDIOS_COLLECTION = 'incendios';
 const USERS_COLLECTION = 'users';
 const OBRA_SERVICES_COLLECTION = 'obraServices';
 const OBRA_NOTES_COLLECTION = 'obraNotes';
 const OBRA_RDOS_COLLECTION = 'obraRdos';
+const OBRA_MEDICOES_COLLECTION = 'obraMedicoes';
+
+const emptyMedicaoBloco = (): ObraMedicaoBloco => ({
+  colunas: [],
+  linhas: [],
+  descontoSinalPercent: 0,
+  descontoFinalizacaoPercent: 0,
+});
+
+const parseMedicaoCelula = (raw: unknown): MedicaoCelula => {
+  if (!raw || typeof raw !== 'object') {
+    return { percentualExecutado: 0, abatimentoValor: 0 };
+  }
+  const o = raw as Record<string, unknown>;
+  const percentualExecutado =
+    typeof o.percentualExecutado === 'number'
+      ? o.percentualExecutado
+      : Number(o.percentualExecutado ?? 0);
+  const abatimentoValor =
+    typeof o.abatimentoValor === 'number' ? o.abatimentoValor : Number(o.abatimentoValor ?? 0);
+  return {
+    percentualExecutado: Number.isFinite(percentualExecutado) ? percentualExecutado : 0,
+    abatimentoValor: Number.isFinite(abatimentoValor) ? abatimentoValor : 0,
+  };
+};
+
+const parseMedicaoLinha = (raw: unknown): MedicaoLinha | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const id = String(o.id ?? o.serviceId ?? '');
+  if (!id) return null;
+  const celulasRaw = o.celulas;
+  const celulas: Record<string, MedicaoCelula> = {};
+  if (celulasRaw && typeof celulasRaw === 'object') {
+    for (const [k, v] of Object.entries(celulasRaw as Record<string, unknown>)) {
+      celulas[k] = parseMedicaoCelula(v);
+    }
+  }
+  return {
+    id,
+    serviceId: o.serviceId === null || o.serviceId === undefined ? null : String(o.serviceId),
+    pacote: String(o.pacote ?? ''),
+    descricao: String(o.descricao ?? ''),
+    valorFechado: typeof o.valorFechado === 'number' ? o.valorFechado : Number(o.valorFechado ?? 0),
+    celulas,
+  };
+};
+
+const parseMedicaoColuna = (raw: unknown): MedicaoColuna | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const id = String(o.id ?? '');
+  if (!id) return null;
+  return { id, titulo: String(o.titulo ?? 'Medição') };
+};
+
+const parseMedicaoBloco = (raw: unknown): ObraMedicaoBloco => {
+  if (!raw || typeof raw !== 'object') return emptyMedicaoBloco();
+  const o = raw as Record<string, unknown>;
+  const colunasIn = Array.isArray(o.colunas) ? o.colunas : [];
+  const linhasIn = Array.isArray(o.linhas) ? o.linhas : [];
+  const colunas = colunasIn.map(parseMedicaoColuna).filter((c): c is MedicaoColuna => !!c);
+  const linhas = linhasIn.map(parseMedicaoLinha).filter((l): l is MedicaoLinha => !!l);
+
+  const totalContrato = linhas.reduce(
+    (sum, l) => sum + (Number.isFinite(l.valorFechado) ? l.valorFechado : 0),
+    0
+  );
+  const totalAbatidoBruto = linhas.reduce((sum, l) => {
+    let row = 0;
+    for (const c of colunas) {
+      const cel = l.celulas[c.id];
+      if (cel && Number.isFinite(cel.abatimentoValor)) row += cel.abatimentoValor;
+    }
+    return sum + row;
+  }, 0);
+
+  let descontoSinalPercent =
+    typeof o.descontoSinalPercent === 'number' ? o.descontoSinalPercent : Number(o.descontoSinalPercent ?? NaN);
+  if (!Number.isFinite(descontoSinalPercent)) {
+    const legacyV =
+      typeof o.descontoSinalValor === 'number' ? o.descontoSinalValor : Number(o.descontoSinalValor ?? NaN);
+    if (Number.isFinite(legacyV) && legacyV > 0 && totalContrato > 0) {
+      descontoSinalPercent = Math.min(100, (legacyV / totalContrato) * 100);
+    } else {
+      descontoSinalPercent = 0;
+    }
+  }
+  descontoSinalPercent = Math.max(0, Math.min(100, descontoSinalPercent));
+
+  let descontoFinalizacaoPercent =
+    typeof o.descontoFinalizacaoPercent === 'number'
+      ? o.descontoFinalizacaoPercent
+      : Number(o.descontoFinalizacaoPercent ?? NaN);
+  if (!Number.isFinite(descontoFinalizacaoPercent)) {
+    const legacyV =
+      typeof o.descontoFinalizacaoValor === 'number'
+        ? o.descontoFinalizacaoValor
+        : Number(o.descontoFinalizacaoValor ?? NaN);
+    if (Number.isFinite(legacyV) && legacyV > 0 && totalContrato > 0) {
+      descontoFinalizacaoPercent = Math.min(100, (legacyV / totalContrato) * 100);
+    } else if (Number.isFinite(legacyV) && legacyV > 0 && totalAbatidoBruto > 0) {
+      descontoFinalizacaoPercent = Math.min(100, (legacyV / totalAbatidoBruto) * 100);
+    } else {
+      descontoFinalizacaoPercent = 0;
+    }
+  }
+  descontoFinalizacaoPercent = Math.max(0, Math.min(100, descontoFinalizacaoPercent));
+
+  return {
+    colunas,
+    linhas,
+    descontoSinalPercent,
+    descontoFinalizacaoPercent,
+  };
+};
+
+const emptyPrestadorSheet = (): ObraMedicaoPrestadorSheet => ({
+  nomePrestador: '',
+  bloco: emptyMedicaoBloco(),
+});
+
+const parsePrestadorSheet = (raw: unknown): ObraMedicaoPrestadorSheet => {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const nomePrestador = String(o.nomePrestador ?? '').trim();
+  return { nomePrestador, bloco: parseMedicaoBloco(raw) };
+};
+
+const padPrestadoresMedicoes = (sheets: ObraMedicaoPrestadorSheet[]): ObraMedicaoPrestadorSheet[] => {
+  const out = [...sheets];
+  while (out.length < OBRA_MEDICAO_PRESTADOR_SLOTS) {
+    out.push(emptyPrestadorSheet());
+  }
+  return out.slice(0, OBRA_MEDICAO_PRESTADOR_SLOTS);
+};
+
+const parsePrestadoresMedicoesFromDoc = (d: Record<string, unknown>): ObraMedicaoPrestadorSheet[] => {
+  const arr = d.prestadoresMedicoes;
+  if (Array.isArray(arr) && arr.length > 0) {
+    return padPrestadoresMedicoes(arr.map(parsePrestadorSheet));
+  }
+  const legacy = parseMedicaoBloco(d.obraPrestadores);
+  return padPrestadoresMedicoes([{ nomePrestador: '', bloco: legacy }]);
+};
 
 // Helper para converter string de data (YYYY-MM-DD) para Date no fuso local
 const parseLocalDate = (dateString: string): Date => {
@@ -550,5 +713,72 @@ export const upsertObraRDO = async (
 export const deleteObraRDO = async (obraId: string, data: string): Promise<void> => {
   const id = buildRDODocId(obraId, data);
   await deleteDoc(doc(db, OBRA_RDOS_COLLECTION, id));
+};
+
+const medicaoBlocoToFirestore = (b: ObraMedicaoBloco) => ({
+  colunas: b.colunas.map((c) => ({ id: c.id, titulo: c.titulo })),
+  linhas: b.linhas.map((l) => ({
+    id: l.id,
+    serviceId: l.serviceId,
+    pacote: l.pacote,
+    descricao: l.descricao,
+    valorFechado: l.valorFechado,
+    celulas: Object.fromEntries(
+      Object.entries(l.celulas).map(([k, v]) => [
+        k,
+        { percentualExecutado: v.percentualExecutado, abatimentoValor: v.abatimentoValor },
+      ])
+    ),
+  })),
+  descontoSinalPercent: b.descontoSinalPercent,
+  descontoFinalizacaoPercent: b.descontoFinalizacaoPercent,
+});
+
+const medicaoPrestadorSheetToFirestore = (s: ObraMedicaoPrestadorSheet) => ({
+  nomePrestador: s.nomePrestador,
+  ...medicaoBlocoToFirestore(s.bloco),
+});
+
+export const getObraMedicao = async (obraId: string): Promise<ObraMedicao | null> => {
+  const snap = await getDoc(doc(db, OBRA_MEDICOES_COLLECTION, obraId));
+  if (!snap.exists()) return null;
+  const d = snap.data() as Record<string, unknown>;
+  const ts = (v: unknown) =>
+    v && typeof v === 'object' && 'toDate' in v && typeof (v as { toDate: () => Date }).toDate === 'function'
+      ? (v as { toDate: () => Date }).toDate().toISOString()
+      : String(v ?? '');
+  return {
+    obraId,
+    clienteObra: parseMedicaoBloco(d.clienteObra),
+    prestadoresMedicoes: parsePrestadoresMedicoesFromDoc(d),
+    createdAt: ts(d.createdAt),
+    updatedAt: ts(d.updatedAt),
+  };
+};
+
+export const upsertObraMedicao = async (
+  obraId: string,
+  payload: { clienteObra: ObraMedicaoBloco; prestadoresMedicoes: ObraMedicaoPrestadorSheet[] }
+): Promise<void> => {
+  const ref = doc(db, OBRA_MEDICOES_COLLECTION, obraId);
+  const existing = await getDoc(ref);
+  const now = Timestamp.now();
+  const sheets = padPrestadoresMedicoes(payload.prestadoresMedicoes);
+  const body = {
+    obraId,
+    clienteObra: medicaoBlocoToFirestore(payload.clienteObra),
+    prestadoresMedicoes: sheets.map(medicaoPrestadorSheetToFirestore),
+    updatedAt: now,
+  };
+
+  if (!existing.exists()) {
+    await setDoc(ref, {
+      ...body,
+      createdAt: now,
+    });
+    return;
+  }
+
+  await setDoc(ref, body, { merge: true });
 };
 

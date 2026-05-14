@@ -9,6 +9,14 @@ service cloud.firestore {
       return signedIn() && request.auth.token.email == 'projetos@preferencial.eng.br';
     }
 
+    function isCollaborador() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return signedIn()
+        && exists(path)
+        && get(path).data.get('permissions', []) is list
+        && 'colaborador' in get(path).data.get('permissions', []);
+    }
+
     // Usuários
     match /users/{userId} {
       allow read: if signedIn();
@@ -41,6 +49,12 @@ service cloud.firestore {
     match /obraRdos/{rdoId} {
       allow read: if signedIn();
       allow create, update, delete: if signedIn();
+    }
+
+    // Medições (cliente×obra e obra×prestadores) — edição só para admin e colaboradores
+    match /obraMedicoes/{obraId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin() || isCollaborador();
     }
   }
 }

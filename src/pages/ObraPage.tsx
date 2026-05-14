@@ -9,6 +9,7 @@ import {
   Home,
   LucideIcon,
   Receipt,
+  Scale,
   Wrench,
 } from 'lucide-react';
 import { getObraById } from '../config/setores';
@@ -36,6 +37,12 @@ function getObraTheme(obraId: string) {
         ring: 'ring-sky-200',
         centerFrom: 'from-sky-600',
         centerTo: 'to-indigo-600',
+      };
+    case 'hotel-central':
+      return {
+        ring: 'ring-amber-200',
+        centerFrom: 'from-amber-600',
+        centerTo: 'to-stone-700',
       };
     default:
       return {
@@ -113,6 +120,14 @@ export default function ObraPage() {
       icon: Receipt,
       iconWrapClass: 'bg-emerald-100',
       iconClass: 'text-emerald-600',
+    },
+    {
+      to: `/obra/${obraId}/medicao`,
+      label: 'Medição',
+      description: 'Valores fechados, medições e descontos',
+      icon: Scale,
+      iconWrapClass: 'bg-violet-100',
+      iconClass: 'text-violet-700',
     },
     {
       to: `/obra/${obraId}/gastos`,

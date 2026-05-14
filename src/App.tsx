@@ -5,6 +5,7 @@ import ObraServicesPage from './pages/ObraServicesPage';
 import ObraNotesPage from './pages/ObraNotesPage';
 import ObraGastosPage from './pages/ObraGastosPage';
 import ObraDashboardPage from './pages/ObraDashboardPage';
+import ObraMedicaoPage from './pages/ObraMedicaoPage';
 import ObraPlanningPage from './pages/ObraPlanningPage';
 import ObraRDOPage from './pages/ObraRDOPage';
 import ObraRDOListPage from './pages/ObraRDOListPage';
@@ -259,6 +260,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ObraNotesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/obra/:obraId/medicao"
+            element={
+              <ProtectedRoute>
+                <ObraMedicaoPage />
               </ProtectedRoute>
             }
           />
