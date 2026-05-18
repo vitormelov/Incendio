@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, Eye, List, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Copy, Eye, List, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { canManageObraData } from '../services/auth';
-import { deleteObraRDO, getObraRDOByDate, upsertObraRDO } from '../services/firestore';
+import { deleteObraRDO, getObraRDOByDate, getPreviousObraRDO, upsertObraRDO } from '../services/firestore';
 import {
   ObraRDO,
   RDOAtividade,
@@ -47,6 +47,37 @@ const newDraft = (obraId: string, data: string): Omit<ObraRDO, 'id' | 'createdAt
   observacoes: '',
 });
 
+const formatDataBR = (iso: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+};
+
+const draftFromExistingRdo = (
+  source: ObraRDO,
+  obraId: string,
+  targetDate: string
+): Omit<ObraRDO, 'id' | 'createdAt' | 'updatedAt'> => ({
+  obraId,
+  data: targetDate,
+  clima: structuredClone(source.clima),
+  condicao: structuredClone(source.condicao),
+  atividades: source.atividades.map((a) => ({ ...a })),
+  efetivo: source.efetivo.map((e) => ({ ...e })),
+  equipamentos: source.equipamentos.map((e) => ({ ...e })),
+  observacoes: source.observacoes,
+});
+
+const draftHasUserContent = (d: Omit<ObraRDO, 'id' | 'createdAt' | 'updatedAt'>): boolean => {
+  if (d.observacoes.trim()) return true;
+  if (d.atividades.length > 0 || d.efetivo.length > 0 || d.equipamentos.length > 0) return true;
+  for (const turno of ['manha', 'tarde', 'noite'] as const) {
+    if (Object.values(d.clima[turno]).some(Boolean)) return true;
+    if (Object.values(d.condicao[turno]).some(Boolean)) return true;
+  }
+  return false;
+};
+
 const turnos: { key: Turno; label: string }[] = [
   { key: 'manha', label: 'Manhã' },
   { key: 'tarde', label: 'Tarde' },
@@ -87,6 +118,7 @@ export default function ObraRDOPage() {
     () => newDraft(obraId || '', todayLocalISO())
   );
   const [existingId, setExistingId] = useState<string | null>(null);
+  const [previousRdo, setPreviousRdo] = useState<ObraRDO | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -105,8 +137,11 @@ export default function ObraRDOPage() {
       if (!rdo) {
         setExistingId(null);
         setDraft(newDraft(obraId, targetDate));
+        const prev = await getPreviousObraRDO(obraId, targetDate);
+        setPreviousRdo(prev);
       } else {
         setExistingId(rdo.id);
+        setPreviousRdo(null);
         setDraft({
           obraId: rdo.obraId,
           data: rdo.data,
@@ -284,6 +319,21 @@ export default function ObraRDOPage() {
     }
   };
 
+  const handleCopyPreviousRdo = () => {
+    if (!obraId || !previousRdo || isReadOnly || existingId) return;
+
+    if (draftHasUserContent(draft)) {
+      const ok = window.confirm(
+        'Os campos já preenchidos serão substituídos pelos dados do RDO anterior. Deseja continuar?'
+      );
+      if (!ok) return;
+    }
+
+    setDraft(draftFromExistingRdo(previousRdo, obraId, date));
+    setSuccess(`Campos preenchidos com o RDO de ${formatDataBR(previousRdo.data)}. Revise e salve.`);
+    setError('');
+  };
+
   const handleDelete = async () => {
     if (!obraId) return;
     if (isReadOnly) return;
@@ -298,6 +348,8 @@ export default function ObraRDOPage() {
       await deleteObraRDO(obraId, date);
       setExistingId(null);
       setDraft(newDraft(obraId, date));
+      const prev = await getPreviousObraRDO(obraId, date);
+      setPreviousRdo(prev);
       setSuccess('RDO excluído com sucesso.');
     } catch (err) {
       console.error('Erro ao excluir RDO:', err);
@@ -410,6 +462,20 @@ export default function ObraRDOPage() {
               )}
             </div>
             <div className="mt-2 text-xs text-gray-500">{existingId ? 'RDO existente' : 'RDO ainda não salvo para esta data'}</div>
+            {!isReadOnly && !existingId && previousRdo && (
+              <button
+                type="button"
+                onClick={handleCopyPreviousRdo}
+                disabled={loading || saving || deleting}
+                className="mt-3 inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+              >
+                <Copy size={16} className="mr-2 shrink-0" />
+                Copiar RDO anterior ({formatDataBR(previousRdo.data)})
+              </button>
+            )}
+            {!isReadOnly && !existingId && !loading && !previousRdo && (
+              <p className="mt-2 text-xs text-gray-400">Não há RDO anterior para copiar nesta obra.</p>
+            )}
           </div>
 
           {!isReadOnly && (

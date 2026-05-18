@@ -671,6 +671,15 @@ export const getObraRDOs = async (obraId: string): Promise<ObraRDO[]> => {
   return results;
 };
 
+/** RDO mais recente com data estritamente anterior a `beforeDate` (YYYY-MM-DD). */
+export const getPreviousObraRDO = async (obraId: string, beforeDate: string): Promise<ObraRDO | null> => {
+  const list = await getObraRDOs(obraId);
+  const candidates = list.filter((r) => r.data < beforeDate);
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.data.localeCompare(a.data));
+  return candidates[0];
+};
+
 export const getObraRDOByDate = async (obraId: string, data: string): Promise<ObraRDO | null> => {
   const id = buildRDODocId(obraId, data);
   const snap = await getDoc(doc(db, OBRA_RDOS_COLLECTION, id));
