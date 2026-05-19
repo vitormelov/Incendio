@@ -267,13 +267,6 @@ export default function ObraPlanningPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              to={`/obra/${obraId}`}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft size={18} className="mr-2" />
-              Voltar
-            </Link>
             <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
               <span className="text-sm text-gray-700 whitespace-nowrap">Data de referência</span>
               <input

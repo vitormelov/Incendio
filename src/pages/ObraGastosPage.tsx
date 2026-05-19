@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Banknote, ChevronDown, ChevronRight, Save } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Banknote, ChevronDown, ChevronRight, Save } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { getObraNotes, getObraServices, updateObraNote } from '../services/firestore';
 import { ObraNote, ObraService } from '../types';
@@ -228,13 +228,6 @@ export default function ObraGastosPage() {
           </div>
 
           <div className="flex gap-2">
-            <Link
-              to={`/obra/${obraId}`}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft size={18} className="mr-2" />
-              Voltar
-            </Link>
             {canManage && (
               <button
                 type="button"

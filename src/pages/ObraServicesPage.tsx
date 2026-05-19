@@ -361,16 +361,6 @@ export default function ObraServicesPage() {
               {obra.nome} • Cadastre pacotes, descrições e verba disponível para vincular com notas futuramente.
             </p>
           </div>
-
-          <div className="flex gap-2">
-            <Link
-              to={`/obra/${obraId}`}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft size={18} className="mr-2" />
-              Voltar
-            </Link>
-          </div>
         </div>
 
         {!canManage && (

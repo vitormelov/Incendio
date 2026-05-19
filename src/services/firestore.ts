@@ -667,7 +667,7 @@ export const getObraRDOs = async (obraId: string): Promise<ObraRDO[]> => {
     } as ObraRDO;
   });
 
-  results.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  results.sort((a, b) => String(b.data).localeCompare(String(a.data)));
   return results;
 };
 

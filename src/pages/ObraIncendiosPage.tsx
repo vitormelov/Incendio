@@ -136,25 +136,16 @@ export default function ObraIncendiosPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-10">
-          <div className="flex items-start gap-3">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 shrink-0">
-              <Flame className="text-orange-600" size={24} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Incêndios</h1>
-              <p className="text-gray-600">
-                {obra.nome} • Projetos (setores), lista de incêndios e resolvidos desta obra.
-              </p>
-            </div>
+        <div className="flex items-start gap-3 mb-10">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 shrink-0">
+            <Flame className="text-orange-600" size={24} />
           </div>
-          <Link
-            to={`/obra/${obraId}`}
-            className="inline-flex items-center self-start px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft size={18} className="mr-2" />
-            Voltar ao menu da obra
-          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Incêndios</h1>
+            <p className="text-gray-600">
+              {obra.nome} • Projetos (setores), lista de incêndios e resolvidos desta obra.
+            </p>
+          </div>
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">

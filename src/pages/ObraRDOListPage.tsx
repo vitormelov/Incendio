@@ -145,13 +145,6 @@ export default function ObraRDOListPage() {
               <RefreshCw size={18} className="mr-2" />
               Atualizar
             </button>
-            <Link
-              to={`/obra/${obraId}`}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft size={18} className="mr-2" />
-              Obra
-            </Link>
           </div>
         </div>
 

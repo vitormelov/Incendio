@@ -1,6 +1,6 @@
-import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import ObraPage from './pages/ObraPage';
+import ObraLayout from './components/ObraLayout';
 import ObraServicesPage from './pages/ObraServicesPage';
 import ObraNotesPage from './pages/ObraNotesPage';
 import ObraGastosPage from './pages/ObraGastosPage';
@@ -240,91 +240,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProtectedObraRoute>
-                  <ObraPage />
+                  <ObraLayout />
                 </ProtectedObraRoute>
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/obra/:obraId/incendios"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraIncendiosPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/servicos"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraServicesPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/notas"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraNotesPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/medicao"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraMedicaoPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/gastos"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraGastosPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/planejamento"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraPlanningPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/rdo/lista"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraRDOListPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/rdo"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraRDOPage />
-                </ProtectedObraRoute>
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route index element={<ObraDashboardPage />} />
+            <Route path="dashboard" element={<Navigate to=".." replace />} />
+            <Route path="incendios" element={<ObraIncendiosPage />} />
+            <Route path="servicos" element={<ObraServicesPage />} />
+            <Route path="notas" element={<ObraNotesPage />} />
+            <Route path="gastos" element={<ObraGastosPage />} />
+            <Route path="planejamento" element={<ObraPlanningPage />} />
+            <Route path="medicao" element={<ObraMedicaoPage />} />
+            <Route path="rdo/lista" element={<ObraRDOListPage />} />
+            <Route path="rdo" element={<ObraRDOPage />} />
+          </Route>
           <Route
             path="/setor/:setorId"
             element={
@@ -332,16 +263,6 @@ function App() {
                 <ProtectedSetorRoute>
                   <SetorPage />
                 </ProtectedSetorRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/obra/:obraId/dashboard"
-            element={
-              <ProtectedRoute>
-                <ProtectedObraRoute>
-                  <ObraDashboardPage />
-                </ProtectedObraRoute>
               </ProtectedRoute>
             }
           />
