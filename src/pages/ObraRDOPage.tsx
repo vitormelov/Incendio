@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, Copy, Eye, List, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Copy, Eye, FileDown, List, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { canManageObraData } from '../services/auth';
 import { deleteObraRDO, getObraRDOByDate, getPreviousObraRDO, upsertObraRDO } from '../services/firestore';
@@ -14,6 +14,7 @@ import {
   RDOEquipamento,
   Turno,
 } from '../types';
+import { downloadRdoPdf } from '../utils/exportRdoPdf';
 
 const todayLocalISO = () => {
   const d = new Date();
@@ -123,6 +124,7 @@ export default function ObraRDOPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -334,6 +336,34 @@ export default function ObraRDOPage() {
     setError('');
   };
 
+  const canExportPdf = !loading && (existingId !== null || draftHasUserContent(draft));
+
+  const handleDownloadPdf = () => {
+    if (!obra) return;
+    try {
+      setExportingPdf(true);
+      setError('');
+      downloadRdoPdf({
+        obraNome: obra.nome,
+        dataIso: date,
+        draft: {
+          data: date,
+          clima: draft.clima,
+          condicao: draft.condicao,
+          atividades: draft.atividades,
+          efetivo: draft.efetivo,
+          equipamentos: draft.equipamentos,
+          observacoes: draft.observacoes,
+        },
+      });
+    } catch (err) {
+      console.error('Erro ao gerar PDF do RDO:', err);
+      setError('Não foi possível gerar o PDF do RDO.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!obraId) return;
     if (isReadOnly) return;
@@ -390,6 +420,18 @@ export default function ObraRDOPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {isReadOnly && (
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={!canExportPdf || exportingPdf || saving || deleting}
+                className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-800 bg-white hover:bg-slate-50 disabled:opacity-50"
+                title="Baixar RDO em PDF para impressão"
+              >
+                <FileDown size={18} className="mr-2" />
+                {exportingPdf ? 'Gerando PDF...' : 'PDF'}
+              </button>
+            )}
             {canManage && isReadOnly && (
               <Link
                 to={`/obra/${obraId}/rdo?data=${encodeURIComponent(date)}&modo=editar`}

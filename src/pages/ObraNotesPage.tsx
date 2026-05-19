@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Eye, FileText, Loader2, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { createObraNote, deleteObraNote, getObraNotes, updateObraNote } from '../services/firestore';
 import { ObraNote } from '../types';
 import { canManageObraData } from '../services/auth';
 
 type NoteDraft = Pick<ObraNote, 'numero' | 'data' | 'empresa' | 'descricao' | 'valor'>;
-type ModalMode = 'create' | 'edit';
+type ModalMode = 'create' | 'edit' | 'view';
 
 const emptyDraft: NoteDraft = {
   numero: '',
@@ -103,8 +103,8 @@ export default function ObraNotesPage() {
     setModalOpen(true);
   };
 
-  const openEditModal = (note: ObraNote) => {
-    setModalMode('edit');
+  const openNoteModal = (note: ObraNote, mode: 'edit' | 'view') => {
+    setModalMode(mode);
     setActiveNoteId(note.id);
     setDraft({
       numero: note.numero,
@@ -223,7 +223,7 @@ export default function ObraNotesPage() {
 
         {!canManage && (
           <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-yellow-800">
-            Você pode visualizar as notas, mas não tem permissão para criar/editar/excluir.
+            Você pode visualizar as notas, mas não tem permissão para criar, editar ou excluir.
           </div>
         )}
 
@@ -291,22 +291,40 @@ export default function ObraNotesPage() {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => openEditModal(note)}
-                          disabled={!canManage}
-                          className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                          onClick={() => openNoteModal(note, 'view')}
+                          className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-800 hover:bg-slate-50"
+                          title="Visualizar nota"
+                          aria-label="Visualizar nota"
                         >
-                          <Pencil size={16} className="mr-2" />
-                          Editar
+                          <Eye size={16} />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(note)}
-                          disabled={!canManage || deletingId === note.id}
-                          className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          <Trash2 size={16} className="mr-2" />
-                          {deletingId === note.id ? 'Excluindo...' : 'Excluir'}
-                        </button>
+                        {canManage && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openNoteModal(note, 'edit')}
+                              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50"
+                              title="Editar nota"
+                              aria-label="Editar nota"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDelete(note)}
+                              disabled={deletingId === note.id}
+                              className="inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white hover:bg-red-700 disabled:opacity-50"
+                              title={deletingId === note.id ? 'Excluindo…' : 'Excluir nota'}
+                              aria-label={deletingId === note.id ? 'Excluindo' : 'Excluir nota'}
+                            >
+                              {deletingId === note.id ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={16} />
+                              )}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -321,7 +339,9 @@ export default function ObraNotesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
-              <h2 className="text-lg font-bold text-gray-900">{modalMode === 'create' ? 'Nova nota' : 'Editar nota'}</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                {modalMode === 'create' ? 'Nova nota' : modalMode === 'edit' ? 'Editar nota' : 'Visualizar nota'}
+              </h2>
               <button type="button" onClick={closeModal} className="rounded p-2 hover:bg-gray-100" title="Fechar">
                 <X size={18} />
               </button>
@@ -332,60 +352,86 @@ export default function ObraNotesPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Número da nota</label>
-                    <input
-                      type="text"
-                      value={draft.numero}
-                      onChange={(e) => setDraft((c) => ({ ...c, numero: e.target.value }))}
-                      disabled={!canManage || !!savingId}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
-                    />
+                    {modalMode === 'view' ? (
+                      <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">{draft.numero}</p>
+                    ) : (
+                      <input
+                        type="text"
+                        value={draft.numero}
+                        onChange={(e) => setDraft((c) => ({ ...c, numero: e.target.value }))}
+                        disabled={!!savingId}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Data</label>
-                    <input
-                      type="date"
-                      value={draft.data}
-                      onChange={(e) => setDraft((c) => ({ ...c, data: e.target.value }))}
-                      disabled={!canManage || !!savingId}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
-                    />
+                    {modalMode === 'view' ? (
+                      <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">{draft.data}</p>
+                    ) : (
+                      <input
+                        type="date"
+                        value={draft.data}
+                        onChange={(e) => setDraft((c) => ({ ...c, data: e.target.value }))}
+                        disabled={!!savingId}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
+                      />
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Empresa</label>
-                  <input
-                    type="text"
-                    value={draft.empresa}
-                    onChange={(e) => setDraft((c) => ({ ...c, empresa: e.target.value }))}
-                    disabled={!canManage || !!savingId}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
-                  />
+                  {modalMode === 'view' ? (
+                    <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">{draft.empresa}</p>
+                  ) : (
+                    <input
+                      type="text"
+                      value={draft.empresa}
+                      onChange={(e) => setDraft((c) => ({ ...c, empresa: e.target.value }))}
+                      disabled={!!savingId}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
+                    />
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-                  <input
-                    type="text"
-                    value={draft.descricao}
-                    onChange={(e) => setDraft((c) => ({ ...c, descricao: e.target.value }))}
-                    disabled={!canManage || !!savingId}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
-                  />
+                  {modalMode === 'view' ? (
+                    <p className="min-h-[4.5rem] whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                      {draft.descricao}
+                    </p>
+                  ) : (
+                    <textarea
+                      rows={4}
+                      value={draft.descricao}
+                      onChange={(e) => setDraft((c) => ({ ...c, descricao: e.target.value }))}
+                      disabled={!!savingId}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
+                    />
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Valor (R$)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={Number.isFinite(draft.valor) ? draft.valor : 0}
-                    onChange={(e) => setDraft((c) => ({ ...c, valor: Number(e.target.value || 0) }))}
-                    disabled={!canManage || !!savingId}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
-                  />
-                  <div className="mt-1 text-xs text-gray-500">{currencyFormatter.format(draft.valor || 0)}</div>
+                  {modalMode === 'view' ? (
+                    <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-900">
+                      {currencyFormatter.format(draft.valor || 0)}
+                    </p>
+                  ) : (
+                    <>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={Number.isFinite(draft.valor) ? draft.valor : 0}
+                        onChange={(e) => setDraft((c) => ({ ...c, valor: Number(e.target.value || 0) }))}
+                        disabled={!!savingId}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">{currencyFormatter.format(draft.valor || 0)}</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -397,17 +443,19 @@ export default function ObraNotesPage() {
                 disabled={!!savingId}
                 className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                Cancelar
+                {modalMode === 'view' ? 'Fechar' : 'Cancelar'}
               </button>
-              <button
-                type="button"
-                onClick={() => void handleSubmit()}
-                disabled={!canManage || !!savingId}
-                className="inline-flex items-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                <Save size={18} className="mr-2" />
-                {savingId ? 'Salvando...' : 'Salvar'}
-              </button>
+              {modalMode !== 'view' && (
+                <button
+                  type="button"
+                  onClick={() => void handleSubmit()}
+                  disabled={!canManage || !!savingId}
+                  className="inline-flex items-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  <Save size={18} className="mr-2" />
+                  {savingId ? 'Salvando...' : 'Salvar'}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -16,77 +16,12 @@ import { getObraMedicao, getObraServices, upsertObraMedicao } from '../services/
 import { canManageObraData } from '../services/auth';
 import type { MedicaoCelula, MedicaoLinha, ObraMedicaoBloco, ObraMedicaoPrestadorSheet, ObraService } from '../types';
 import { OBRA_MEDICAO_PRESTADOR_SLOTS } from '../types';
+import { sortObraServicesForDisplay } from '../utils/obraServicesOrder';
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 });
-
-const IMPLICIT_ORDER_BASE = 1_000_000;
-
-/** Ordenação igual à página Serviços: pacotes e itens na mesma ordem de exibição. */
-function sortObraServicesForMedicao(services: ObraService[]): ObraService[] {
-  const map = new Map<string, ObraService[]>();
-  for (const service of services) {
-    const pacote = (service.pacote || '').trim() || 'Sem pacote';
-    const current = map.get(pacote) || [];
-    current.push(service);
-    map.set(pacote, current);
-  }
-
-  const entries = Array.from(map.entries()).map(([pacote, items]) => {
-    const withOrder = items.filter((s) => typeof s.serviceOrder === 'number') as Array<
-      ObraService & { serviceOrder: number }
-    >;
-    const withoutOrder = items.filter((s) => typeof s.serviceOrder !== 'number');
-
-    withOrder.sort((a, b) => {
-      if (a.serviceOrder !== b.serviceOrder) return a.serviceOrder - b.serviceOrder;
-      const byDesc = a.descricao.localeCompare(b.descricao, 'pt-BR');
-      if (byDesc !== 0) return byDesc;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
-    withoutOrder.sort((a, b) => {
-      const byDesc = a.descricao.localeCompare(b.descricao, 'pt-BR');
-      if (byDesc !== 0) return byDesc;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
-    const orderedItems = [...withOrder, ...withoutOrder].map((s, idx) => {
-      const effectiveOrder = typeof s.serviceOrder === 'number' ? s.serviceOrder : IMPLICIT_ORDER_BASE + idx;
-      return { ...s, serviceOrder: effectiveOrder } as ObraService & { serviceOrder: number };
-    });
-
-    const orderCandidates = items
-      .map((s) => (typeof s.pacoteOrder === 'number' ? s.pacoteOrder : Number.POSITIVE_INFINITY))
-      .filter((n) => Number.isFinite(n));
-    const pacoteOrder = orderCandidates.length > 0 ? Math.min(...orderCandidates) : Number.POSITIVE_INFINITY;
-    return { pacote, items: orderedItems, pacoteOrder };
-  });
-
-  const implicitPackages = entries
-    .filter((e) => !Number.isFinite(e.pacoteOrder))
-    .map((e) => e.pacote)
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-  const withDisplayOrder = entries.map((e) => {
-    const implicitIdx = !Number.isFinite(e.pacoteOrder) ? implicitPackages.indexOf(e.pacote) : -1;
-    const displayOrder = Number.isFinite(e.pacoteOrder) ? e.pacoteOrder : IMPLICIT_ORDER_BASE + Math.max(0, implicitIdx);
-    return { ...e, displayOrder };
-  });
-
-  withDisplayOrder.sort((a, b) => {
-    if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder;
-    return a.pacote.localeCompare(b.pacote, 'pt-BR');
-  });
-
-  const out: ObraService[] = [];
-  for (const g of withDisplayOrder) {
-    for (const s of g.items) out.push(s);
-  }
-  return out;
-}
 
 const emptyBloco = (): ObraMedicaoBloco => ({
   colunas: [],
@@ -186,7 +121,7 @@ function normalizeBlocoFromApi(bloco: ObraMedicaoBloco, sorted: ObraService[]): 
 
 const syncLinhasComServicos = (bloco: ObraMedicaoBloco, services: ObraService[]): ObraMedicaoBloco => {
   const repaired = repairBloco(bloco);
-  const sorted = sortObraServicesForMedicao(services);
+  const sorted = sortObraServicesForDisplay(services);
   const byServiceId = new Map(repaired.linhas.filter((l) => l.serviceId).map((l) => [l.serviceId as string, l]));
 
   const nextLinhas = sorted.map((s) => {
@@ -298,7 +233,7 @@ export default function ObraMedicaoPage() {
     try {
       const [svc, med] = await Promise.all([getObraServices(obraId), getObraMedicao(obraId)]);
       setServices(svc);
-      const sorted = sortObraServicesForMedicao(svc);
+      const sorted = sortObraServicesForDisplay(svc);
       if (med) {
         setClienteObra(normalizeBlocoFromApi(med.clienteObra, sorted));
         setPrestadoresMedicoes(
@@ -350,7 +285,7 @@ export default function ObraMedicaoPage() {
     );
   };
 
-  const sortedServices = useMemo(() => sortObraServicesForMedicao(services), [services]);
+  const sortedServices = useMemo(() => sortObraServicesForDisplay(services), [services]);
 
   const flatRows = useMemo(() => buildFlatRows(sortedServices, blocoAtual), [sortedServices, blocoAtual]);
 
@@ -515,7 +450,7 @@ export default function ObraMedicaoPage() {
     setError('');
     setSuccess('');
     try {
-      const sorted = sortObraServicesForMedicao(services);
+      const sorted = sortObraServicesForDisplay(services);
       const cliente = normalizeBlocoFromApi(clienteObra, sorted);
       const prestadoresPayload = prestadoresMedicoes.map((s) => ({
         nomePrestador: s.nomePrestador.trim(),

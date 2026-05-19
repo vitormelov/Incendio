@@ -23,6 +23,157 @@ const diffDaysInclusive = (start: Date, end: Date) => {
   return days + 1;
 };
 
+const isEndBeforeStart = (dataInicio: string, dataTermino: string) =>
+  Boolean(dataInicio && dataTermino && dataTermino < dataInicio);
+
+/** Largura mínima da timeline (px por dia) para scroll horizontal sem invadir os rótulos. */
+const GANTT_PX_PER_DAY = 14;
+const GANTT_LABEL_WIDTH = '18rem';
+
+type GanttRow = {
+  service: ObraService;
+  start: Date | null;
+  end: Date | null;
+  finalizado: boolean;
+  invalidRange: boolean;
+  inProgress: boolean;
+  overdue: boolean;
+};
+
+type GanttChartProps = {
+  ganttRange: { minStart: Date; maxEnd: Date; totalDays: number };
+  refDate: Date;
+  rows: GanttRow[];
+};
+
+function GanttChart({ ganttRange, refDate, rows }: GanttChartProps) {
+  const ganttTimelineMinWidth = Math.max(480, ganttRange.totalDays * GANTT_PX_PER_DAY);
+  const refDayOffset = Math.floor(
+    (refDate.getTime() - ganttRange.minStart.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const showRefLine = refDayOffset >= 0 && refDayOffset <= ganttRange.totalDays;
+  const refLineLeftPx = showRefLine ? (refDayOffset / ganttRange.totalDays) * ganttTimelineMinWidth : null;
+
+  return (
+    <div className="p-4">
+      <div className="mb-3 flex text-xs text-gray-600">
+        <div className="shrink-0 pr-3" style={{ width: GANTT_LABEL_WIDTH }}>
+          {ganttRange.minStart.toLocaleDateString('pt-BR')} → {ganttRange.maxEnd.toLocaleDateString('pt-BR')} (
+          {ganttRange.totalDays} dias)
+        </div>
+        <div className="min-w-0 flex-1 text-right pr-1">
+          Ref.: {refDate.toLocaleDateString('pt-BR')}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
+        <div
+          className="grid"
+          style={{
+            minWidth: `calc(${GANTT_LABEL_WIDTH} + ${ganttTimelineMinWidth}px)`,
+            gridTemplateColumns: `${GANTT_LABEL_WIDTH} ${ganttTimelineMinWidth}px`,
+            gridTemplateRows: `repeat(${rows.length}, 2.5rem)`,
+          }}
+        >
+          {rows.map((row, rowIndex) => {
+            const label = `${row.service.pacote} : ${row.service.descricao}`;
+            return (
+              <div
+                key={`${row.service.id}-label`}
+                className="sticky left-0 z-20 flex items-center border-b border-r-2 border-gray-200 bg-white px-3 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]"
+                style={{ gridColumn: 1, gridRow: rowIndex + 1 }}
+                title={label}
+              >
+                <div className="truncate text-xs text-gray-700">
+                  {label}
+                  {row.invalidRange && <span className="ml-1 text-red-600">(datas inválidas)</span>}
+                </div>
+              </div>
+            );
+          })}
+
+          <div
+            className="relative border-l-2 border-gray-200 bg-white"
+            style={{
+              gridColumn: 2,
+              gridRow: `1 / span ${rows.length}`,
+              minWidth: ganttTimelineMinWidth,
+            }}
+          >
+            {showRefLine && refLineLeftPx !== null && (
+              <div
+                className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-blue-600/70"
+                style={{ left: refLineLeftPx }}
+                title="Data de referência"
+              />
+            )}
+
+            {rows.map((row) => {
+              const label = `${row.service.pacote} : ${row.service.descricao}`;
+              const start = row.start;
+              const end = row.end;
+
+              if (!start || !end || row.invalidRange) {
+                return (
+                  <div key={row.service.id} className="flex h-10 items-center border-b border-gray-100 px-3">
+                    <div className="relative h-6 w-full rounded border border-gray-100 bg-gray-50" />
+                  </div>
+                );
+              }
+
+              const startOffset = Math.floor(
+                (start.getTime() - ganttRange.minStart.getTime()) / (1000 * 60 * 60 * 24)
+              );
+              const widthDays = diffDaysInclusive(start, end);
+              const leftPct = (startOffset / ganttRange.totalDays) * 100;
+              const widthPct = (widthDays / ganttRange.totalDays) * 100;
+
+              const color = row.finalizado
+                ? 'bg-emerald-600'
+                : row.overdue
+                  ? 'bg-red-600'
+                  : row.inProgress
+                    ? 'bg-blue-600'
+                    : 'bg-slate-700';
+
+              return (
+                <div key={row.service.id} className="flex h-10 items-center border-b border-gray-100 px-3">
+                  <div className="relative h-6 w-full rounded border border-gray-100 bg-gray-50">
+                    <div
+                      className={`absolute top-0.5 bottom-0.5 rounded ${color}`}
+                      style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1)}%` }}
+                      title={`${label}\n${start.toLocaleDateString('pt-BR')} → ${end.toLocaleDateString('pt-BR')} (${widthDays} dias)`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-gray-500">Role horizontalmente na área do gráfico para ver todo o período.</p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded bg-emerald-600" /> Finalizado
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded bg-blue-600" /> Em execução
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded bg-red-600" /> Em atraso
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded bg-slate-700" /> Planejado
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block h-0.5 w-4 bg-blue-600/70" /> Data de referência
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function ObraPlanningPage() {
   const { obraId } = useParams<{ obraId: string }>();
   const obra = obraId ? getObraById(obraId) : undefined;
@@ -171,6 +322,26 @@ export default function ObraPlanningPage() {
   const expandAll = () => setExpandedPackages(new Set(groupedByPackage.map((g) => g.pacote)));
   const collapseAll = () => setExpandedPackages(new Set());
 
+  const setPlanningDate = (serviceId: string, field: 'dataInicio' | 'dataTermino', value: string) => {
+    setDraft((c) => {
+      const current = c[serviceId] ?? { dataInicio: '', dataTermino: '', finalizado: false };
+      let dataInicio = field === 'dataInicio' ? value : current.dataInicio;
+      let dataTermino = field === 'dataTermino' ? value : current.dataTermino;
+
+      if (field === 'dataTermino' && dataInicio && dataTermino && dataTermino < dataInicio) {
+        return c;
+      }
+      if (field === 'dataInicio' && dataInicio && dataTermino && dataTermino < dataInicio) {
+        dataTermino = dataInicio;
+      }
+
+      return {
+        ...c,
+        [serviceId]: { ...current, dataInicio, dataTermino },
+      };
+    });
+  };
+
   const normalizedRows = useMemo(() => {
     return orderedServices
       .map((s) => {
@@ -179,9 +350,10 @@ export default function ObraPlanningPage() {
         const end = d?.dataTermino ? parseISODateLocal(d.dataTermino) : null;
         const duration = start && end ? diffDaysInclusive(start, end) : null;
         const finalizado = !!d?.finalizado;
-        const inProgress = !!(start && end && ref >= start && ref <= end && !finalizado);
+        const invalidRange = isEndBeforeStart(d?.dataInicio ?? '', d?.dataTermino ?? '');
+        const inProgress = !!(start && end && ref >= start && ref <= end && !finalizado && !invalidRange);
         const overdue = !!(end && ref > end && !finalizado);
-        return { service: s, draft: d, start, end, duration, finalizado, inProgress, overdue };
+        return { service: s, draft: d, start, end, duration, finalizado, invalidRange, inProgress, overdue };
       });
   }, [draft, orderedServices, ref]);
 
@@ -215,6 +387,18 @@ export default function ObraPlanningPage() {
 
   const handleSaveAll = async () => {
     if (!canManage) return;
+
+    const invalidServices = services.filter((s) => {
+      const d = draft[s.id];
+      return isEndBeforeStart(d?.dataInicio ?? '', d?.dataTermino ?? '');
+    });
+    if (invalidServices.length > 0) {
+      const labels = invalidServices.map((s) => `${s.pacote} — ${s.descricao}`).join('; ');
+      setError(`A data de término não pode ser anterior à data de início: ${labels}.`);
+      setSuccess('');
+      return;
+    }
+
     setSaving(true);
     setError('');
     setSuccess('');
@@ -405,38 +589,36 @@ export default function ObraPlanningPage() {
                                       <input
                                         type="date"
                                         value={row.draft?.dataInicio ?? ''}
-                                        onChange={(e) =>
-                                          setDraft((c) => ({
-                                            ...c,
-                                            [service.id]: {
-                                              ...(c[service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
-                                              dataInicio: e.target.value,
-                                            },
-                                          }))
-                                        }
+                                        max={row.draft?.dataTermino || undefined}
+                                        onChange={(e) => setPlanningDate(service.id, 'dataInicio', e.target.value)}
                                         disabled={!canManage || saving}
-                                        className="rounded-md border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                                        className={`rounded-md border px-2 py-1 text-sm disabled:bg-gray-50 ${
+                                          row.invalidRange ? 'border-red-400 focus:ring-red-500' : 'border-gray-300'
+                                        }`}
                                       />
                                     </td>
                                     <td className="px-4 py-3">
                                       <input
                                         type="date"
                                         value={row.draft?.dataTermino ?? ''}
-                                        onChange={(e) =>
-                                          setDraft((c) => ({
-                                            ...c,
-                                            [service.id]: {
-                                              ...(c[service.id] ?? { dataInicio: '', dataTermino: '', finalizado: false }),
-                                              dataTermino: e.target.value,
-                                            },
-                                          }))
-                                        }
+                                        min={row.draft?.dataInicio || undefined}
+                                        onChange={(e) => setPlanningDate(service.id, 'dataTermino', e.target.value)}
                                         disabled={!canManage || saving}
-                                        className="rounded-md border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                                        className={`rounded-md border px-2 py-1 text-sm disabled:bg-gray-50 ${
+                                          row.invalidRange ? 'border-red-400 focus:ring-red-500' : 'border-gray-300'
+                                        }`}
                                       />
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                                      {row.duration !== null ? row.duration : <span className="text-gray-400">-</span>}
+                                      {row.invalidRange ? (
+                                        <span className="text-red-600" title="Término anterior ao início">
+                                          Inválido
+                                        </span>
+                                      ) : row.duration !== null ? (
+                                        row.duration
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                       <label className="inline-flex items-center justify-center gap-2 text-sm">
@@ -482,95 +664,7 @@ export default function ObraPlanningPage() {
                   Defina datas de início e término para ver o gráfico de Gantt.
                 </div>
               ) : (
-                <div className="p-4 overflow-x-auto">
-                  <div className="min-w-[900px]">
-                    <div className="mb-3 flex items-center justify-between text-xs text-gray-600">
-                      <div>
-                        {ganttRange.minStart.toLocaleDateString('pt-BR')} → {ganttRange.maxEnd.toLocaleDateString('pt-BR')} (
-                        {ganttRange.totalDays} dias)
-                      </div>
-                      <div>Ref.: {ref.toLocaleDateString('pt-BR')}</div>
-                    </div>
-
-                    <div className="relative rounded-md border border-gray-200 bg-white">
-                      {/* Reference line */}
-                      {(() => {
-                        const delta = Math.floor((ref.getTime() - ganttRange.minStart.getTime()) / (1000 * 60 * 60 * 24));
-                        if (delta < 0 || delta > ganttRange.totalDays) return null;
-                        const left = (delta / ganttRange.totalDays) * 100;
-                        return (
-                          <div
-                            className="absolute top-0 bottom-0 w-0.5 bg-blue-600/60"
-                            style={{ left: `${left}%` }}
-                            title="Data de referência"
-                          />
-                        );
-                      })()}
-
-                      <div className="divide-y divide-gray-100">
-                        {normalizedRows.map((row) => {
-                          const label = `${row.service.pacote} : ${row.service.descricao}`;
-                          const start = row.start;
-                          const end = row.end;
-                          if (!start || !end) {
-                            return (
-                              <div key={row.service.id} className="flex items-center gap-3 px-3 py-2">
-                                <div className="w-72 text-xs text-gray-700 truncate" title={label}>
-                                  {label}
-                                </div>
-                                <div className="relative flex-1 h-6 rounded bg-gray-50 border border-gray-100" />
-                              </div>
-                            );
-                          }
-
-                          const startOffset = Math.floor((start.getTime() - ganttRange.minStart.getTime()) / (1000 * 60 * 60 * 24));
-                          const widthDays = diffDaysInclusive(start, end);
-                          const leftPct = (startOffset / ganttRange.totalDays) * 100;
-                          const widthPct = (widthDays / ganttRange.totalDays) * 100;
-
-                          const color =
-                            row.finalizado
-                              ? 'bg-emerald-600'
-                              : row.overdue
-                                ? 'bg-red-600'
-                                : row.inProgress
-                                  ? 'bg-blue-600'
-                                  : 'bg-slate-700';
-
-                          return (
-                            <div key={row.service.id} className="flex items-center gap-3 px-3 py-2">
-                              <div className="w-72 text-xs text-gray-700 truncate" title={label}>
-                                {label}
-                              </div>
-                              <div className="relative flex-1 h-6 rounded bg-gray-50 border border-gray-100">
-                                <div
-                                  className={`absolute top-0.5 bottom-0.5 rounded ${color}`}
-                                  style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1)}%` }}
-                                  title={`${label}\n${start.toLocaleDateString('pt-BR')} → ${end.toLocaleDateString('pt-BR')} (${widthDays} dias)`}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="inline-block h-2.5 w-2.5 rounded bg-emerald-600" /> Finalizado
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="inline-block h-2.5 w-2.5 rounded bg-blue-600" /> Em execução
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="inline-block h-2.5 w-2.5 rounded bg-red-600" /> Em atraso
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="inline-block h-2.5 w-2.5 rounded bg-slate-700" /> Planejado
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <GanttChart ganttRange={ganttRange} refDate={ref} rows={normalizedRows} />
               )}
             </div>
           </div>

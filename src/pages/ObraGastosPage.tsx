@@ -5,6 +5,7 @@ import { getObraById } from '../config/setores';
 import { getObraNotes, getObraServices, updateObraNote } from '../services/firestore';
 import { ObraNote, ObraService } from '../types';
 import { canManageObraData } from '../services/auth';
+import { groupObraServicesByPackage, sortObraServicesForDisplay } from '../utils/obraServicesOrder';
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -69,24 +70,14 @@ export default function ObraGastosPage() {
     return totals;
   }, [effectiveServiceIdByNoteId, notes]);
 
+  const orderedServices = useMemo(() => sortObraServicesForDisplay(services), [services]);
+
   const groupedByPackage = useMemo(() => {
-    const map = new Map<string, ObraService[]>();
-    for (const s of services) {
-      const pacote = (s.pacote || '').trim() || 'Sem pacote';
-      const current = map.get(pacote) || [];
-      current.push(s);
-      map.set(pacote, current);
-    }
-
-    const entries = Array.from(map.entries()).map(([pacote, pacoteServices]) => {
-      pacoteServices.sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'));
-      const verbaSubtotal = pacoteServices.reduce((sum, s) => sum + (s.verba || 0), 0);
-      const gastoSubtotal = pacoteServices.reduce((sum, s) => sum + (spentByServiceId.get(s.id) ?? 0), 0);
-      return { pacote, services: pacoteServices, verbaSubtotal, gastoSubtotal };
+    return groupObraServicesByPackage(services).map((g) => {
+      const verbaSubtotal = g.items.reduce((sum, s) => sum + (s.verba || 0), 0);
+      const gastoSubtotal = g.items.reduce((sum, s) => sum + (spentByServiceId.get(s.id) ?? 0), 0);
+      return { pacote: g.pacote, services: g.items, verbaSubtotal, gastoSubtotal };
     });
-
-    entries.sort((a, b) => a.pacote.localeCompare(b.pacote, 'pt-BR'));
-    return entries;
   }, [services, spentByServiceId]);
 
   const totals = useMemo(() => {
@@ -322,7 +313,7 @@ export default function ObraGastosPage() {
                                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
                                 >
                                   <option value="">Sem vínculo</option>
-                                  {services.map((s) => (
+                                  {orderedServices.map((s) => (
                                     <option key={s.id} value={s.id}>
                                       {serviceLabel(s)}
                                     </option>

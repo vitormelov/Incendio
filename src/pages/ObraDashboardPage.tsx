@@ -110,7 +110,35 @@ export default function ObraDashboardPage() {
     const unlinked = notes.length - linked.length;
     const totalVerba = services.reduce((sum, s) => sum + (Number.isFinite(s.verba) ? s.verba : 0), 0);
     const gastoVinculado = linked.reduce((sum, n) => sum + (Number.isFinite(n.valor) ? n.valor : 0), 0);
-    return { linked: linked.length, unlinked, totalVerba, gastoVinculado };
+
+    const spentByServiceId = new Map<string, number>();
+    for (const n of linked) {
+      const serviceId = (n.serviceId ?? '').trim();
+      spentByServiceId.set(
+        serviceId,
+        (spentByServiceId.get(serviceId) ?? 0) + (Number.isFinite(n.valor) ? n.valor : 0)
+      );
+    }
+
+    const overBudget = services
+      .map((s) => {
+        const verba = Number.isFinite(s.verba) ? s.verba : 0;
+        const gasto = spentByServiceId.get(s.id) ?? 0;
+        const excess = gasto - verba;
+        if (excess <= 0) return null;
+        return {
+          id: s.id,
+          pacote: (s.pacote || '').trim() || 'Sem pacote',
+          descricao: s.descricao,
+          verba,
+          gasto,
+          excess,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => b.excess - a.excess);
+
+    return { linked: linked.length, unlinked, totalVerba, gastoVinculado, overBudget };
   }, [notes, services]);
 
   const planejamentoSummary = useMemo(() => {
@@ -338,6 +366,43 @@ export default function ObraDashboardPage() {
                       <div className="text-sm font-semibold text-gray-900">{notesSummary.count}</div>
                     </div>
                   </div>
+
+                  {gastosSummary.overBudget.length > 0 && (
+                    <div className="mt-4 border-t border-gray-100 pt-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-800">
+                        Acima da verba ({gastosSummary.overBudget.length})
+                      </p>
+                      <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                        {gastosSummary.overBudget.map((item) => (
+                          <div
+                            key={item.id}
+                            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div
+                                  className="truncate text-sm font-semibold text-gray-900"
+                                  title={`${item.pacote} — ${item.descricao}`}
+                                >
+                                  {item.pacote} — {item.descricao}
+                                </div>
+                                <div className="mt-0.5 text-xs text-gray-600">
+                                  Verba {currencyFormatter.format(item.verba)} • Gasto{' '}
+                                  {currencyFormatter.format(item.gasto)}
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <div className="text-xs font-medium text-red-800">Acima</div>
+                                <div className="whitespace-nowrap text-sm font-bold text-red-900">
+                                  +{currencyFormatter.format(item.excess)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
