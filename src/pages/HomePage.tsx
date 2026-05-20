@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { obras } from '../config/setores';
 import type { Obra } from '../types';
 import { Building2 } from 'lucide-react';
-import { getCurrentUser, isAdmin, getUserFirestoreProfile } from '../services/auth';
+import { getCurrentUser, isAdmin, getUserFirestoreProfile, isDemoMode } from '../services/auth';
+import { DEMO_OBRA_ID } from '../services/demoMode';
+import { getObraById } from '../config/setores';
 
 export default function HomePage() {
   const [visibleObras, setVisibleObras] = useState<Obra[] | null>(null);
@@ -14,6 +16,11 @@ export default function HomePage() {
       const user = getCurrentUser();
       if (!user) {
         if (!cancelled) setVisibleObras([]);
+        return;
+      }
+      if (isDemoMode()) {
+        const demoObra = getObraById(DEMO_OBRA_ID);
+        if (!cancelled) setVisibleObras(demoObra ? [demoObra] : []);
         return;
       }
       if (isAdmin(user)) {
@@ -50,6 +57,11 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center mb-12">
           <p className="text-xl text-gray-600">Sistema de Gestão de Problemas em Obra</p>
+          {isDemoMode() && (
+            <p className="mt-2 text-sm text-gray-500">
+              Modo demonstração — visualização da obra Hotel Central (somente leitura).
+            </p>
+          )}
         </div>
 
         {visibleObras.length === 0 && (

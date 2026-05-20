@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { login, getCurrentUser, onAuthChange, clearPermissionsCache } from '../services/auth';
+import { login, getCurrentUser, onAuthChange, clearPermissionsCache, enterDemoMode } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { LogIn, Mail, Lock, Presentation } from 'lucide-react';
 import Logo from '../components/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -26,6 +27,21 @@ export default function LoginPage() {
 
     return unsubscribe;
   }, [navigate]);
+
+  const handleDemo = async () => {
+    setError('');
+    setDemoLoading(true);
+    try {
+      await enterDemoMode();
+      clearPermissionsCache();
+      navigate('/');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Não foi possível entrar na demonstração.';
+      setError(message);
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +151,27 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleDemo}
+              disabled={loading || demoLoading}
+              className="w-full flex justify-center items-center py-2.5 px-4 border border-violet-300 rounded-md shadow-sm text-sm font-medium text-violet-800 bg-violet-50 hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {demoLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-violet-700 mr-2" />
+                  Entrando no modo demonstração…
+                </>
+              ) : (
+                <>
+                  <Presentation size={20} className="mr-2" />
+                  Modo demonstração
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

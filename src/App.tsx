@@ -26,7 +26,7 @@ import Logo from './components/Logo';
 import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
-import { getCurrentUser, logout, onAuthChange, isAdmin, clearPermissionsCache } from './services/auth';
+import { getCurrentUser, logout, onAuthChange, isAdmin, clearPermissionsCache, isDemoMode } from './services/auth';
 import { Home, LogOut, User, Shield, Menu, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -138,7 +138,9 @@ function App() {
                   <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <User size={16} />
-                      <span className="max-w-[220px] truncate">{getUserNameByEmail(user.email)}</span>
+                      <span className="max-w-[220px] truncate">
+                        {isDemoMode() ? 'Demonstração' : getUserNameByEmail(user.email)}
+                      </span>
                     </div>
                     <button
                       onClick={handleLogout}
@@ -154,7 +156,9 @@ function App() {
                 <div className="md:hidden flex items-center gap-2">
                   <div className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-700">
                     <User size={16} />
-                    <span className="max-w-[140px] truncate">{getUserNameByEmail(user.email)}</span>
+                    <span className="max-w-[140px] truncate">
+                      {isDemoMode() ? 'Demonstração' : getUserNameByEmail(user.email)}
+                    </span>
                   </div>
                 </div>
               </div>

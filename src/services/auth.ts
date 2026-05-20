@@ -12,6 +12,15 @@ import { db, firebaseConfig } from '../firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { UserPermission } from '../types';
 import { getObraById, parseObraIdsPermitidosDoUsuario } from '../config/setores';
+import {
+  clearDemoMode,
+  DEMO_LOGIN_EMAIL,
+  DEMO_LOGIN_PASSWORD,
+  DEMO_OBRA_ID,
+  getDemoUserProfile,
+  isDemoMode,
+  setDemoMode,
+} from './demoMode';
 
 const ADMIN_EMAIL = 'projetos@preferencial.eng.br';
 
@@ -48,6 +57,7 @@ const getAuthErrorMessage = (error: unknown, fallback: string): string => {
 };
 
 export const login = async (email: string, password: string) => {
+  clearDemoMode();
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
@@ -84,7 +94,33 @@ export const signup = async (
   }
 };
 
+export const enterDemoMode = async (): Promise<void> => {
+  clearPermissionsCache();
+  setDemoMode();
+
+  const current = getCurrentUser();
+  if (current?.email?.toLowerCase() === DEMO_LOGIN_EMAIL.toLowerCase()) {
+    return;
+  }
+
+  if (current) {
+    await signOut(auth);
+  }
+
+  try {
+    await signInWithEmailAndPassword(auth, DEMO_LOGIN_EMAIL, DEMO_LOGIN_PASSWORD);
+  } catch (error: unknown) {
+    clearDemoMode();
+    throw new Error(
+      getAuthErrorMessage(error, 'Não foi possível entrar na conta de demonstração.')
+    );
+  }
+};
+
+export { isDemoMode } from './demoMode';
+
 export const logout = async () => {
+  clearDemoMode();
   try {
     await signOut(auth);
   } catch (error: unknown) {
@@ -98,6 +134,7 @@ export const getCurrentUser = () => {
 };
 
 export const isAdmin = (user: User | null): boolean => {
+  if (isDemoMode()) return false;
   return user?.email === ADMIN_EMAIL;
 };
 
@@ -128,6 +165,10 @@ const fetchUserProfileFromFirestore = async (uid: string): Promise<UserFirestore
 };
 
 export const getUserFirestoreProfile = async (uid: string): Promise<UserFirestoreProfile> => {
+  if (isDemoMode()) {
+    const demo = getDemoUserProfile();
+    return { permissions: demo.permissions, obraIdsPermitidos: demo.obraIdsPermitidos };
+  }
   const cached = userProfileCache.get(uid);
   if (cached) return cached;
   const profile = await fetchUserProfileFromFirestore(uid);
@@ -156,6 +197,7 @@ function profileAllowsObraAccess(
 export const canUserAccessObraId = async (obraId: string): Promise<boolean> => {
   const user = getCurrentUser();
   if (!user) return false;
+  if (isDemoMode()) return obraId === DEMO_OBRA_ID;
   if (isAdmin(user)) return true;
   if (!getObraById(obraId)) return false;
   const profile = await getUserFirestoreProfile(user.uid);
@@ -170,6 +212,7 @@ export const canUserAccessObraId = async (obraId: string): Promise<boolean> => {
 export const canManageObraData = async (obraId: string): Promise<boolean> => {
   const user = getCurrentUser();
   if (!user) return false;
+  if (isDemoMode()) return false;
   if (isAdmin(user)) return true;
   if (!getObraById(obraId)) return false;
   const profile = await getUserFirestoreProfile(user.uid);
