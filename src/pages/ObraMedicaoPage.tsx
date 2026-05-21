@@ -147,9 +147,66 @@ const syncLinhasComServicos = (bloco: ObraMedicaoBloco, services: ObraService[])
 
 type MedicaoTab = 'cliente' | number;
 
+type PacoteTotais = {
+  subtotalFechado: number;
+  subtotalMedido: number;
+  abatimentoPorColuna: Record<string, number>;
+};
+
 type FlatRow =
-  | { kind: 'pacote'; pacote: string; subtotalFechado: number }
+  | { kind: 'pacote'; pacote: string } & PacoteTotais
   | { kind: 'linha'; linha: MedicaoLinha; pacoteGrupo: string };
+
+function abatimentoTotalLinha(linha: MedicaoLinha, bloco: ObraMedicaoBloco): number {
+  return bloco.colunas.reduce((acc, col) => {
+    const c = linha.celulas[col.id] ?? emptyCelula();
+    return acc + (Number.isFinite(c.abatimentoValor) ? c.abatimentoValor : 0);
+  }, 0);
+}
+
+function totaisPacote(
+  sorted: ObraService[],
+  byId: Map<string, MedicaoLinha>,
+  bloco: ObraMedicaoBloco,
+  pacote: string
+): PacoteTotais {
+  const itens = sorted.filter((x) => ((x.pacote || '').trim() || 'Sem pacote') === pacote);
+  const abatimentoPorColuna: Record<string, number> = Object.fromEntries(
+    bloco.colunas.map((c) => [c.id, 0])
+  );
+  let subtotalFechado = 0;
+  let subtotalMedido = 0;
+  for (const x of itens) {
+    const l = byId.get(x.id);
+    if (!l) continue;
+    subtotalFechado += Number.isFinite(l.valorFechado) ? l.valorFechado : 0;
+    subtotalMedido += abatimentoTotalLinha(l, bloco);
+    for (const col of bloco.colunas) {
+      const c = l.celulas[col.id] ?? emptyCelula();
+      const v = Number.isFinite(c.abatimentoValor) ? c.abatimentoValor : 0;
+      abatimentoPorColuna[col.id] = (abatimentoPorColuna[col.id] ?? 0) + v;
+    }
+  }
+  return { subtotalFechado, subtotalMedido, abatimentoPorColuna };
+}
+
+function totaisPacoteLinhas(linhas: MedicaoLinha[], bloco: ObraMedicaoBloco): PacoteTotais {
+  const abatimentoPorColuna: Record<string, number> = Object.fromEntries(
+    bloco.colunas.map((c) => [c.id, 0])
+  );
+  let subtotalFechado = 0;
+  let subtotalMedido = 0;
+  for (const l of linhas) {
+    subtotalFechado += Number.isFinite(l.valorFechado) ? l.valorFechado : 0;
+    subtotalMedido += abatimentoTotalLinha(l, bloco);
+    for (const col of bloco.colunas) {
+      const c = l.celulas[col.id] ?? emptyCelula();
+      const v = Number.isFinite(c.abatimentoValor) ? c.abatimentoValor : 0;
+      abatimentoPorColuna[col.id] = (abatimentoPorColuna[col.id] ?? 0) + v;
+    }
+  }
+  return { subtotalFechado, subtotalMedido, abatimentoPorColuna };
+}
 
 function buildFlatRows(sorted: ObraService[], bloco: ObraMedicaoBloco): FlatRow[] {
   const byId = new Map(bloco.linhas.map((l) => [l.serviceId || l.id, l]));
@@ -161,13 +218,7 @@ function buildFlatRows(sorted: ObraService[], bloco: ObraMedicaoBloco): FlatRow[
     if (!linha) continue;
     const p = (s.pacote || '').trim() || 'Sem pacote';
     if (p !== prevPacote) {
-      const subtotal = sorted
-        .filter((x) => ((x.pacote || '').trim() || 'Sem pacote') === p)
-        .reduce((acc, x) => {
-          const l = byId.get(x.id);
-          return acc + (l && Number.isFinite(l.valorFechado) ? l.valorFechado : 0);
-        }, 0);
-      rows.push({ kind: 'pacote', pacote: p, subtotalFechado: subtotal });
+      rows.push({ kind: 'pacote', pacote: p, ...totaisPacote(sorted, byId, bloco, p) });
       prevPacote = p;
     }
     rows.push({ kind: 'linha', linha, pacoteGrupo: p });
@@ -178,8 +229,7 @@ function buildFlatRows(sorted: ObraService[], bloco: ObraMedicaoBloco): FlatRow[
   );
   const orphans = bloco.linhas.filter((l) => !shown.has(l.id));
   if (orphans.length > 0) {
-    const sub = orphans.reduce((acc, l) => acc + (Number.isFinite(l.valorFechado) ? l.valorFechado : 0), 0);
-    rows.push({ kind: 'pacote', pacote: 'Demais linhas', subtotalFechado: sub });
+    rows.push({ kind: 'pacote', pacote: 'Demais linhas', ...totaisPacoteLinhas(orphans, bloco) });
     for (const l of orphans) {
       rows.push({ kind: 'linha', linha: l, pacoteGrupo: 'Demais linhas' });
     }
@@ -678,7 +728,7 @@ export default function ObraMedicaoPage() {
                         const isOpen = expandedPackages.has(row.pacote);
                         return (
                           <tr key={`pkg-${row.pacote}-${idx}`} className="bg-gray-100">
-                            <td colSpan={colCount} className="px-0 py-0">
+                            <td className="sticky left-0 z-[1] bg-gray-100 px-0 py-0">
                               <button
                                 type="button"
                                 onClick={() => togglePackage(row.pacote)}
@@ -690,10 +740,23 @@ export default function ObraMedicaoPage() {
                                   <ChevronRight size={18} className="shrink-0 text-gray-600" />
                                 )}
                                 <span className="min-w-0 truncate">{row.pacote}</span>
-                                <span className="ml-auto shrink-0 text-xs font-semibold text-gray-600">
-                                  Subtotal fechado {currencyFormatter.format(row.subtotalFechado)}
-                                </span>
                               </button>
+                            </td>
+                            <td className="px-3 py-2.5 font-semibold text-gray-900 whitespace-nowrap tabular-nums">
+                              {currencyFormatter.format(row.subtotalFechado)}
+                            </td>
+                            {blocoAtual.colunas.map((col) => (
+                              <td key={col.id} className="px-2 py-2.5 border-l border-gray-200 bg-gray-100 align-top">
+                                <div className="grid grid-cols-2 gap-1 min-w-[110px]">
+                                  <span aria-hidden className="min-h-[1.75rem]" />
+                                  <div className="flex items-center rounded border border-gray-200 bg-gray-50/90 px-1 py-1 text-xs font-semibold text-gray-900 tabular-nums">
+                                    {currencyFormatter.format(row.abatimentoPorColuna[col.id] ?? 0)}
+                                  </div>
+                                </div>
+                              </td>
+                            ))}
+                            <td className="px-3 py-2.5 text-right font-semibold text-gray-900 border-l border-gray-200 whitespace-nowrap tabular-nums">
+                              {currencyFormatter.format(row.subtotalMedido)}
                             </td>
                           </tr>
                         );
@@ -702,10 +765,7 @@ export default function ObraMedicaoPage() {
                       if (!expandedPackages.has(row.pacoteGrupo)) return null;
 
                       const linha = row.linha;
-                      const abatLinha = blocoAtual.colunas.reduce((acc, col) => {
-                        const c = linha.celulas[col.id] ?? emptyCelula();
-                        return acc + (Number.isFinite(c.abatimentoValor) ? c.abatimentoValor : 0);
-                      }, 0);
+                      const abatLinha = abatimentoTotalLinha(linha, blocoAtual);
 
                       return (
                         <tr key={linha.id} className="hover:bg-gray-50/80">
