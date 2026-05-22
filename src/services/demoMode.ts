@@ -1,4 +1,6 @@
+import { ALL_OBRA_MODULO_IDS } from '../config/obraModulos';
 import { UserPermission } from '../types';
+import type { ObraModuloId } from '../config/obraModulos';
 
 /** Obra exibida no modo demonstração (somente leitura, sem colaborador). */
 export const DEMO_OBRA_ID = 'hotel-central';
@@ -14,6 +16,7 @@ const DEMO_SESSION_KEY = 'incendio_demo_mode';
 export type DemoUserProfile = {
   permissions: UserPermission[];
   obraIdsPermitidos: string[];
+  obraModulosPermitidos: ObraModuloId[] | null;
 };
 
 export function isDemoMode(): boolean {
@@ -33,5 +36,6 @@ export function getDemoUserProfile(): DemoUserProfile {
   return {
     permissions: [],
     obraIdsPermitidos: [DEMO_OBRA_ID],
+    obraModulosPermitidos: [...ALL_OBRA_MODULO_IDS],
   };
 }

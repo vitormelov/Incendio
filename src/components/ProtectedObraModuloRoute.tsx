@@ -1,36 +1,39 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { getObraIdForSetor } from '../config/setores';
-import { canUserAccessObraId, canUserAccessObraModulo } from '../services/auth';
+import type { ObraModuloId } from '../config/obraModulos';
+import { canUserAccessObraModulo, getObraLandingPath } from '../services/auth';
 
-interface ProtectedSetorRouteProps {
+interface ProtectedObraModuloRouteProps {
+  modulo: ObraModuloId;
   children: React.ReactNode;
 }
 
-export default function ProtectedSetorRoute({ children }: ProtectedSetorRouteProps) {
-  const { setorId } = useParams<{ setorId: string }>();
+export default function ProtectedObraModuloRoute({ modulo, children }: ProtectedObraModuloRouteProps) {
+  const { obraId } = useParams<{ obraId: string }>();
   const [state, setState] = useState<'loading' | 'ok' | 'denied'>('loading');
+  const [redirectTo, setRedirectTo] = useState('/');
 
   useEffect(() => {
-    if (!setorId) {
-      setState('denied');
-      return;
-    }
-    const obraId = getObraIdForSetor(setorId);
     if (!obraId) {
       setState('denied');
+      setRedirectTo('/');
       return;
     }
     let cancelled = false;
     void (async () => {
-      const okObra = await canUserAccessObraId(obraId);
-      const okModulo = okObra ? await canUserAccessObraModulo(obraId, 'incendios') : false;
-      if (!cancelled) setState(okModulo ? 'ok' : 'denied');
+      const ok = await canUserAccessObraModulo(obraId, modulo);
+      if (cancelled) return;
+      if (ok) {
+        setState('ok');
+        return;
+      }
+      setRedirectTo(await getObraLandingPath(obraId));
+      setState('denied');
     })();
     return () => {
       cancelled = true;
     };
-  }, [setorId]);
+  }, [obraId, modulo]);
 
   if (state === 'loading') {
     return (
@@ -44,7 +47,7 @@ export default function ProtectedSetorRoute({ children }: ProtectedSetorRoutePro
   }
 
   if (state === 'denied') {
-    return <Navigate to="/" replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   return <>{children}</>;

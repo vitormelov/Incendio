@@ -21,6 +21,7 @@ import IncendioForm from './components/IncendioForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import ProtectedObraRoute from './components/ProtectedObraRoute';
+import ProtectedObraModuloRoute from './components/ProtectedObraModuloRoute';
 import ProtectedSetorRoute from './components/ProtectedSetorRoute';
 import Logo from './components/Logo';
 import { useState, useEffect } from 'react';
@@ -249,16 +250,79 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<ObraDashboardPage />} />
+            <Route
+              index
+              element={
+                <ProtectedObraModuloRoute modulo="dashboard">
+                  <ObraDashboardPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
             <Route path="dashboard" element={<Navigate to=".." replace />} />
-            <Route path="incendios" element={<ObraIncendiosPage />} />
-            <Route path="servicos" element={<ObraServicesPage />} />
-            <Route path="notas" element={<ObraNotesPage />} />
-            <Route path="gastos" element={<ObraGastosPage />} />
-            <Route path="planejamento" element={<ObraPlanningPage />} />
-            <Route path="medicao" element={<ObraMedicaoPage />} />
-            <Route path="rdo/lista" element={<ObraRDOListPage />} />
-            <Route path="rdo" element={<ObraRDOPage />} />
+            <Route
+              path="incendios"
+              element={
+                <ProtectedObraModuloRoute modulo="incendios">
+                  <ObraIncendiosPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="servicos"
+              element={
+                <ProtectedObraModuloRoute modulo="servicos">
+                  <ObraServicesPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="notas"
+              element={
+                <ProtectedObraModuloRoute modulo="notas">
+                  <ObraNotesPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="gastos"
+              element={
+                <ProtectedObraModuloRoute modulo="gastos">
+                  <ObraGastosPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="planejamento"
+              element={
+                <ProtectedObraModuloRoute modulo="planejamento">
+                  <ObraPlanningPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="medicao"
+              element={
+                <ProtectedObraModuloRoute modulo="medicao">
+                  <ObraMedicaoPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="rdo/lista"
+              element={
+                <ProtectedObraModuloRoute modulo="rdo">
+                  <ObraRDOListPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="rdo"
+              element={
+                <ProtectedObraModuloRoute modulo="rdo">
+                  <ObraRDOPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
           </Route>
           <Route
             path="/setor/:setorId"

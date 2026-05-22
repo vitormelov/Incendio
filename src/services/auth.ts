@@ -11,6 +11,12 @@ import { auth } from '../firebase/config';
 import { db, firebaseConfig } from '../firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { UserPermission } from '../types';
+import {
+  ALL_OBRA_MODULO_IDS,
+  firstObraPathForModulos,
+  type ObraModuloId,
+  parseObraModulosPermitidosDoUsuario,
+} from '../config/obraModulos';
 import { getObraById, parseObraIdsPermitidosDoUsuario } from '../config/setores';
 import {
   clearDemoMode,
@@ -142,6 +148,8 @@ type UserFirestoreProfile = {
   permissions: UserPermission[];
   /** `null` = todas as obras; array = apenas IDs listados (pode ser vazio). */
   obraIdsPermitidos: string[] | null;
+  /** `null` = todas as opções do menu da obra; array = apenas módulos listados. */
+  obraModulosPermitidos: ObraModuloId[] | null;
 };
 
 const userProfileCache = new Map<string, UserFirestoreProfile>();
@@ -150,24 +158,29 @@ const fetchUserProfileFromFirestore = async (uid: string): Promise<UserFirestore
   try {
     const snap = await getDoc(doc(db, 'users', uid));
     if (!snap.exists()) {
-      return { permissions: [], obraIdsPermitidos: [] };
+      return { permissions: [], obraIdsPermitidos: [], obraModulosPermitidos: [] };
     }
     const data = snap.data();
     const permissions = Array.isArray(data.permissions)
       ? (data.permissions.filter((p: unknown): p is UserPermission => p === 'colaborador') as UserPermission[])
       : [];
     const obraIdsPermitidos = parseObraIdsPermitidosDoUsuario(data as Record<string, unknown>);
-    return { permissions, obraIdsPermitidos };
+    const obraModulosPermitidos = parseObraModulosPermitidosDoUsuario(data as Record<string, unknown>);
+    return { permissions, obraIdsPermitidos, obraModulosPermitidos };
   } catch (error) {
     console.error('Erro ao buscar perfil do usuário:', error);
-    return { permissions: [], obraIdsPermitidos: [] };
+    return { permissions: [], obraIdsPermitidos: [], obraModulosPermitidos: [] };
   }
 };
 
 export const getUserFirestoreProfile = async (uid: string): Promise<UserFirestoreProfile> => {
   if (isDemoMode()) {
     const demo = getDemoUserProfile();
-    return { permissions: demo.permissions, obraIdsPermitidos: demo.obraIdsPermitidos };
+    return {
+      permissions: demo.permissions,
+      obraIdsPermitidos: demo.obraIdsPermitidos,
+      obraModulosPermitidos: demo.obraModulosPermitidos,
+    };
   }
   const cached = userProfileCache.get(uid);
   if (cached) return cached;
@@ -203,6 +216,40 @@ export const canUserAccessObraId = async (obraId: string): Promise<boolean> => {
   const profile = await getUserFirestoreProfile(user.uid);
   const isCollab = profile.permissions.includes('colaborador');
   return profileAllowsObraAccess(profile, obraId, isCollab);
+};
+
+/** Módulos do menu da obra que o usuário pode abrir. Colaborador e admin: todos. */
+export function getEffectiveObraModulos(profile: UserFirestoreProfile): ObraModuloId[] {
+  if (profile.permissions.includes('colaborador')) return ALL_OBRA_MODULO_IDS;
+  if (profile.obraModulosPermitidos === null) return ALL_OBRA_MODULO_IDS;
+  return profile.obraModulosPermitidos;
+}
+
+export const getUserObraModulosPermitidos = async (): Promise<ObraModuloId[]> => {
+  const user = getCurrentUser();
+  if (!user) return [];
+  if (isAdmin(user)) return ALL_OBRA_MODULO_IDS;
+  if (isDemoMode()) return ALL_OBRA_MODULO_IDS;
+  const profile = await getUserFirestoreProfile(user.uid);
+  return getEffectiveObraModulos(profile);
+};
+
+/** Pode abrir esta seção da obra (dashboard, RDO, etc.). */
+export const canUserAccessObraModulo = async (obraId: string, modulo: ObraModuloId): Promise<boolean> => {
+  if (!(await canUserAccessObraId(obraId))) return false;
+  const user = getCurrentUser();
+  if (!user) return false;
+  if (isDemoMode()) return true;
+  if (isAdmin(user)) return true;
+  const profile = await getUserFirestoreProfile(user.uid);
+  return getEffectiveObraModulos(profile).includes(modulo);
+};
+
+export const getObraLandingPath = async (obraId: string): Promise<string> => {
+  const modulos = await getUserObraModulosPermitidos();
+  const allowed = modulos.filter((m) => ALL_OBRA_MODULO_IDS.includes(m));
+  if (allowed.length === 0) return '/';
+  return firstObraPathForModulos(obraId, allowed);
 };
 
 /**

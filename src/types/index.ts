@@ -151,6 +151,8 @@ export interface ObraRDO {
   updatedAt: string;
 }
 
+import type { ObraModuloId } from '../config/obraModulos';
+
 export type UserPermission = 'colaborador';
 
 export interface Collaborator {
@@ -164,6 +166,11 @@ export interface Collaborator {
    * Array vazio = nenhuma obra.
    */
   obraIdsPermitidos: string[] | null;
+  /**
+   * Opções do menu da obra (dashboard, RDO, etc.). Colaborador ignora e vê todas.
+   * `null` = todas as opções. Array vazio = nenhuma seção.
+   */
+  obraModulosPermitidos: ObraModuloId[] | null;
   createdAt: string | null;
   updatedAt?: string | null;
 }

@@ -15,6 +15,7 @@ import {
   deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { parseObraModulosPermitidosDoUsuario } from '../config/obraModulos';
 import { parseObraIdsPermitidosDoUsuario } from '../config/setores';
 import {
   Incendio,
@@ -283,6 +284,7 @@ export const getCollaborators = async (): Promise<Collaborator[]> => {
         email: data.email || '',
         permissions,
         obraIdsPermitidos: parseObraIdsPermitidosDoUsuario(data as Record<string, unknown>),
+        obraModulosPermitidos: parseObraModulosPermitidosDoUsuario(data as Record<string, unknown>),
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       };
@@ -296,7 +298,7 @@ export const deleteCollaborator = async (userId: string): Promise<void> => {
 
 export const updateCollaborator = async (
   userId: string,
-  data: Pick<Collaborator, 'nome' | 'permissions' | 'obraIdsPermitidos'>
+  data: Pick<Collaborator, 'nome' | 'permissions' | 'obraIdsPermitidos' | 'obraModulosPermitidos'>
 ): Promise<void> => {
   const ref = doc(db, USERS_COLLECTION, userId);
   const payload: Record<string, unknown> = {
@@ -308,6 +310,11 @@ export const updateCollaborator = async (
     payload.obraIdsPermitidos = deleteField();
   } else {
     payload.obraIdsPermitidos = data.obraIdsPermitidos;
+  }
+  if (data.obraModulosPermitidos === null) {
+    payload.obraModulosPermitidos = deleteField();
+  } else {
+    payload.obraModulosPermitidos = data.obraModulosPermitidos;
   }
   await updateDoc(ref, payload);
 };

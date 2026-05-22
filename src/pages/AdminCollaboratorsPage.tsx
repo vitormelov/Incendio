@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, UserCog } from 'lucide-react';
+import { ALL_OBRA_MODULO_IDS, OBRA_NAV_ITEMS } from '../config/obraModulos';
+import type { ObraModuloId } from '../config/obraModulos';
 import { obras } from '../config/setores';
 import { Collaborator, UserPermission } from '../types';
 import { deleteCollaborator, getCollaborators, updateCollaborator } from '../services/firestore';
@@ -17,6 +19,23 @@ const effectiveSelectedObraIds = (c: Collaborator): string[] => {
     return c.permissions.includes('colaborador') ? allObraIds() : [];
   }
   return c.obraIdsPermitidos;
+};
+
+const effectiveSelectedModulos = (c: Collaborator): ObraModuloId[] => {
+  if (c.permissions.includes('colaborador') || c.obraModulosPermitidos === null) {
+    return ALL_OBRA_MODULO_IDS;
+  }
+  return c.obraModulosPermitidos;
+};
+
+const toggleModuloAccess = (c: Collaborator, modulo: ObraModuloId, checked: boolean): Collaborator => {
+  if (c.permissions.includes('colaborador')) return c;
+  const current = new Set(effectiveSelectedModulos(c));
+  if (checked) current.add(modulo);
+  else current.delete(modulo);
+  const next = ALL_OBRA_MODULO_IDS.filter((id) => current.has(id));
+  const isFull = next.length === ALL_OBRA_MODULO_IDS.length;
+  return { ...c, obraModulosPermitidos: isFull ? null : next };
 };
 
 const toggleObraAccess = (c: Collaborator, obraId: string, checked: boolean): Collaborator => {
@@ -74,14 +93,22 @@ export default function AdminCollaboratorsPage() {
           : collaborator.permissions.filter((item) => item !== permission);
 
         let obraIdsPermitidos = collaborator.obraIdsPermitidos;
+        let obraModulosPermitidos = collaborator.obraModulosPermitidos;
         if (!checked && permission === 'colaborador' && collaborator.obraIdsPermitidos === null) {
           obraIdsPermitidos = allObraIds();
+        }
+        if (checked && permission === 'colaborador') {
+          obraModulosPermitidos = null;
+        }
+        if (!checked && permission === 'colaborador' && collaborator.obraModulosPermitidos === null) {
+          obraModulosPermitidos = [...ALL_OBRA_MODULO_IDS];
         }
 
         return {
           ...collaborator,
           permissions,
           obraIdsPermitidos,
+          obraModulosPermitidos,
         };
       })
     );
@@ -106,6 +133,30 @@ export default function AdminCollaboratorsPage() {
   const handleClearAllObras = (id: string) => {
     setCollaborators((current) =>
       current.map((c) => (c.id === id ? { ...c, obraIdsPermitidos: [] } : c))
+    );
+  };
+
+  const handleModuloAccessChange = (id: string, modulo: ObraModuloId, checked: boolean) => {
+    setCollaborators((current) =>
+      current.map((c) => (c.id === id ? toggleModuloAccess(c, modulo, checked) : c))
+    );
+  };
+
+  const handleSelectAllModulos = (id: string) => {
+    setCollaborators((current) =>
+      current.map((c) =>
+        c.id === id
+          ? { ...c, obraModulosPermitidos: c.permissions.includes('colaborador') ? null : [...ALL_OBRA_MODULO_IDS] }
+          : c
+      )
+    );
+  };
+
+  const handleClearAllModulos = (id: string) => {
+    setCollaborators((current) =>
+      current.map((c) =>
+        c.id === id ? { ...c, obraModulosPermitidos: c.permissions.includes('colaborador') ? null : [] } : c
+      )
     );
   };
 
@@ -151,6 +202,7 @@ export default function AdminCollaboratorsPage() {
             nome: collaborator.nome.trim(),
             permissions: collaborator.permissions,
             obraIdsPermitidos: collaborator.obraIdsPermitidos,
+            obraModulosPermitidos: collaborator.obraModulosPermitidos,
           })
         )
       );
@@ -177,9 +229,9 @@ export default function AdminCollaboratorsPage() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Colaboradores cadastrados</h1>
             <p className="text-gray-600">
-              <strong>Colaborador</strong> habilita <strong>edição</strong> nas obras em que o usuário também tiver
-              acesso. <strong>Obras marcadas</strong> definem o acesso (visualização para todos; edição só com
-              Colaborador). Colaborador com todas as obras marcadas grava sem lista no Firestore.
+              <strong>Colaborador</strong> habilita <strong>edição</strong> e vê <strong>todas</strong> as opções do
+              menu da obra. Sem colaborador, marque <strong>obras</strong> e <strong>opções</strong> (dashboard, RDO,
+              etc.) que a conta pode abrir em modo leitura.
             </p>
           </div>
 
@@ -320,6 +372,69 @@ export default function AdminCollaboratorsPage() {
                         <span className="truncate" title={obra.nome}>
                           {obra.nome}
                         </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-5 border-t border-gray-100 pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <label className="text-sm font-medium text-gray-700">Opções da obra (menu)</label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAllModulos(collaborator.id)}
+                        disabled={
+                          saving || deletingId === collaborator.id || collaborator.permissions.includes('colaborador')
+                        }
+                        className="text-xs font-medium text-purple-700 hover:underline disabled:opacity-50"
+                      >
+                        Marcar todas
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => handleClearAllModulos(collaborator.id)}
+                        disabled={
+                          saving || deletingId === collaborator.id || collaborator.permissions.includes('colaborador')
+                        }
+                        className="text-xs font-medium text-gray-600 hover:underline disabled:opacity-50"
+                      >
+                        Desmarcar todas
+                      </button>
+                    </div>
+                  </div>
+                  {collaborator.permissions.includes('colaborador') ? (
+                    <p className="text-xs text-gray-500 mb-3">
+                      Com <strong>Colaborador</strong> marcado, o usuário acessa todas as seções (dashboard, incêndios,
+                      serviços, notas, gastos, planejamento, medição e RDO).
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 mb-3">
+                      Defina o que aparece no menu lateral da obra para quem <strong>não</strong> é colaborador (ex. só
+                      RDO e Serviços).
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border border-gray-200 bg-gray-50/80 px-3 py-3">
+                    {OBRA_NAV_ITEMS.map((item) => (
+                      <label
+                        key={item.modulo}
+                        className="inline-flex min-w-[9rem] cursor-pointer items-center gap-2 text-sm text-gray-800"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={effectiveSelectedModulos(collaborator).includes(item.modulo)}
+                          onChange={(e) =>
+                            handleModuloAccessChange(collaborator.id, item.modulo, e.target.checked)
+                          }
+                          disabled={
+                            saving ||
+                            deletingId === collaborator.id ||
+                            collaborator.permissions.includes('colaborador')
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-60"
+                        />
+                        <span>{item.label}</span>
                       </label>
                     ))}
                   </div>
