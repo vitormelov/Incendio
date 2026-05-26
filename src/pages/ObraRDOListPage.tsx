@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, Eye, List, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Eye, List, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { canManageObraData } from '../services/auth';
 import { deleteObraRDO, getObraRDOs } from '../services/firestore';
@@ -127,15 +127,6 @@ export default function ObraRDOListPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {canManage && (
-              <Link
-                to={`/obra/${obraId}/rdo?modo=editar`}
-                className="inline-flex items-center px-4 py-2 border border-indigo-200 rounded-md text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
-              >
-                <ClipboardList size={18} className="mr-2" />
-                Preencher RDO
-              </Link>
-            )}
             <button
               type="button"
               onClick={() => void load()}
@@ -258,7 +249,7 @@ export default function ObraRDOListPage() {
 
         {canManage && (
           <p className="mt-6 text-xs text-gray-500">
-            Para criar um RDO em uma data nova, use <strong>Preencher RDO</strong> ou <strong>Novo RDO</strong>, escolha a data e salve.
+            Para criar um RDO em uma data nova, use <strong>Novo RDO</strong>, escolha a data e salve.
           </p>
         )}
       </div>
