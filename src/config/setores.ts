@@ -71,6 +71,14 @@ const termacoSetores: Setor[] = [
   },
 ];
 
+const termacoTerraplanagemSetores: Setor[] = [
+  {
+    id: 'termaco-terraplanagem-geral',
+    nome: 'Geral',
+    pdfPath: '/pdfs/termacoTerraplanagem/termacoTerraplanagem.pdf',
+  },
+];
+
 const hotelCentralSetores: Setor[] = [
   {
     id: 'hotel-central-fachada',
@@ -128,9 +136,15 @@ export const obras: Obra[] = [
   },
   {
     id: 'termaco',
-    nome: 'Termaco',
+    nome: 'Termaco Galpão',
     imageUrl: '/bg/termaco.jpg',
     setores: termacoSetores,
+  },
+  {
+    id: 'termaco-terraplanagem',
+    nome: 'Termaco Terraplanagem',
+    imageUrl: '/bg/termacoTerraplanagem.png',
+    setores: termacoTerraplanagemSetores,
   },
   {
     id: 'hotel-central',

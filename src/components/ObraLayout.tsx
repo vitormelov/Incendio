@@ -16,6 +16,8 @@ function getObraTheme(obraId: string) {
       return { centerFrom: 'from-orange-500', centerTo: 'to-rose-500' };
     case 'termaco':
       return { centerFrom: 'from-sky-600', centerTo: 'to-indigo-600' };
+    case 'termaco-terraplanagem':
+      return { centerFrom: 'from-emerald-600', centerTo: 'to-teal-700' };
     case 'hotel-central':
       return { centerFrom: 'from-amber-600', centerTo: 'to-stone-700' };
     default:
