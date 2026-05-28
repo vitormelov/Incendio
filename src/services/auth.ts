@@ -220,7 +220,6 @@ export const canUserAccessObraId = async (obraId: string): Promise<boolean> => {
 
 /** Módulos do menu da obra que o usuário pode abrir. Colaborador e admin: todos. */
 export function getEffectiveObraModulos(profile: UserFirestoreProfile): ObraModuloId[] {
-  if (profile.permissions.includes('colaborador')) return ALL_OBRA_MODULO_IDS;
   if (profile.obraModulosPermitidos === null) return ALL_OBRA_MODULO_IDS;
   return profile.obraModulosPermitidos;
 }

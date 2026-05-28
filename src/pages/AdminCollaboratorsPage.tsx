@@ -22,14 +22,13 @@ const effectiveSelectedObraIds = (c: Collaborator): string[] => {
 };
 
 const effectiveSelectedModulos = (c: Collaborator): ObraModuloId[] => {
-  if (c.permissions.includes('colaborador') || c.obraModulosPermitidos === null) {
+  if (c.obraModulosPermitidos === null) {
     return ALL_OBRA_MODULO_IDS;
   }
   return c.obraModulosPermitidos;
 };
 
 const toggleModuloAccess = (c: Collaborator, modulo: ObraModuloId, checked: boolean): Collaborator => {
-  if (c.permissions.includes('colaborador')) return c;
   const current = new Set(effectiveSelectedModulos(c));
   if (checked) current.add(modulo);
   else current.delete(modulo);
@@ -97,9 +96,6 @@ export default function AdminCollaboratorsPage() {
         if (!checked && permission === 'colaborador' && collaborator.obraIdsPermitidos === null) {
           obraIdsPermitidos = allObraIds();
         }
-        if (checked && permission === 'colaborador') {
-          obraModulosPermitidos = null;
-        }
         if (!checked && permission === 'colaborador' && collaborator.obraModulosPermitidos === null) {
           obraModulosPermitidos = [...ALL_OBRA_MODULO_IDS];
         }
@@ -146,7 +142,7 @@ export default function AdminCollaboratorsPage() {
     setCollaborators((current) =>
       current.map((c) =>
         c.id === id
-          ? { ...c, obraModulosPermitidos: c.permissions.includes('colaborador') ? null : [...ALL_OBRA_MODULO_IDS] }
+          ? { ...c, obraModulosPermitidos: null }
           : c
       )
     );
@@ -155,7 +151,7 @@ export default function AdminCollaboratorsPage() {
   const handleClearAllModulos = (id: string) => {
     setCollaborators((current) =>
       current.map((c) =>
-        c.id === id ? { ...c, obraModulosPermitidos: c.permissions.includes('colaborador') ? null : [] } : c
+        c.id === id ? { ...c, obraModulosPermitidos: [] } : c
       )
     );
   };
@@ -384,9 +380,7 @@ export default function AdminCollaboratorsPage() {
                       <button
                         type="button"
                         onClick={() => handleSelectAllModulos(collaborator.id)}
-                        disabled={
-                          saving || deletingId === collaborator.id || collaborator.permissions.includes('colaborador')
-                        }
+                        disabled={saving || deletingId === collaborator.id}
                         className="text-xs font-medium text-purple-700 hover:underline disabled:opacity-50"
                       >
                         Marcar todas
@@ -395,26 +389,17 @@ export default function AdminCollaboratorsPage() {
                       <button
                         type="button"
                         onClick={() => handleClearAllModulos(collaborator.id)}
-                        disabled={
-                          saving || deletingId === collaborator.id || collaborator.permissions.includes('colaborador')
-                        }
+                        disabled={saving || deletingId === collaborator.id}
                         className="text-xs font-medium text-gray-600 hover:underline disabled:opacity-50"
                       >
                         Desmarcar todas
                       </button>
                     </div>
                   </div>
-                  {collaborator.permissions.includes('colaborador') ? (
-                    <p className="text-xs text-gray-500 mb-3">
-                      Com <strong>Colaborador</strong> marcado, o usuário acessa todas as seções (dashboard, incêndios,
-                      serviços, notas, gastos, planejamento, medição e RDO).
-                    </p>
-                  ) : (
-                    <p className="text-xs text-gray-500 mb-3">
-                      Defina o que aparece no menu lateral da obra para quem <strong>não</strong> é colaborador (ex. só
-                      RDO e Serviços).
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500 mb-3">
+                    Defina quais seções aparecem no menu lateral para este usuário. Mesmo com <strong>Colaborador</strong>, você pode restringir módulos
+                    (útil quando cada colaborador atua em áreas diferentes).
+                  </p>
                   <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border border-gray-200 bg-gray-50/80 px-3 py-3">
                     {OBRA_NAV_ITEMS.map((item) => (
                       <label
@@ -427,11 +412,7 @@ export default function AdminCollaboratorsPage() {
                           onChange={(e) =>
                             handleModuloAccessChange(collaborator.id, item.modulo, e.target.checked)
                           }
-                          disabled={
-                            saving ||
-                            deletingId === collaborator.id ||
-                            collaborator.permissions.includes('colaborador')
-                          }
+                          disabled={saving || deletingId === collaborator.id}
                           className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-60"
                         />
                         <span>{item.label}</span>
