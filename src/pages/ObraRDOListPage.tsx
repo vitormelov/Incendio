@@ -19,6 +19,9 @@ const formatDateTimeBR = (iso: string) => {
   return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 };
 
+const sumQuantidade = (items: { quantidade: number }[] | undefined) =>
+  (items ?? []).reduce((acc, item) => acc + (Number.isFinite(item.quantidade) ? item.quantidade : 0), 0);
+
 export default function ObraRDOListPage() {
   const { obraId } = useParams<{ obraId: string }>();
   const obra = obraId ? getObraById(obraId) : undefined;
@@ -196,8 +199,8 @@ export default function ObraRDOListPage() {
               <tbody className="divide-y divide-gray-200 bg-white">
                 {filtered.map((r) => {
                   const nAt = r.atividades?.length ?? 0;
-                  const nEf = r.efetivo?.length ?? 0;
-                  const nEq = r.equipamentos?.length ?? 0;
+                  const nEf = sumQuantidade(r.efetivo);
+                  const nEq = sumQuantidade(r.equipamentos);
                   return (
                     <tr key={r.id} className="hover:bg-gray-50">
                       <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">{formatDataBR(r.data)}</td>
