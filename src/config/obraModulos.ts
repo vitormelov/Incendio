@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Banknote,
   BarChart3,
+  Briefcase,
   CalendarDays,
   ClipboardList,
   Flame,
@@ -14,6 +15,7 @@ import {
 export type ObraModuloId =
   | 'dashboard'
   | 'incendios'
+  | 'administrativo'
   | 'servicos'
   | 'notas'
   | 'gastos'
@@ -24,6 +26,7 @@ export type ObraModuloId =
 export const ALL_OBRA_MODULO_IDS: ObraModuloId[] = [
   'dashboard',
   'incendios',
+  'administrativo',
   'servicos',
   'notas',
   'gastos',
@@ -43,6 +46,7 @@ export type ObraNavItemDef = {
 export const OBRA_NAV_ITEMS: ObraNavItemDef[] = [
   { modulo: 'dashboard', segment: '', label: 'Dashboard', icon: BarChart3, matchPaths: ['', '/dashboard'] },
   { modulo: 'incendios', segment: 'incendios', label: 'Incêndios', icon: Flame },
+  { modulo: 'administrativo', segment: 'administrativo', label: 'Administrativo', icon: Briefcase, matchPaths: ['/administrativo'] },
   { modulo: 'servicos', segment: 'servicos', label: 'Serviços', icon: Wrench },
   { modulo: 'notas', segment: 'notas', label: 'Notas', icon: Receipt },
   { modulo: 'gastos', segment: 'gastos', label: 'Gastos', icon: Banknote },
@@ -73,6 +77,9 @@ export function isObraNavActive(
     }
     if (m === '/rdo') {
       return rel.startsWith('/rdo');
+    }
+    if (m === '/administrativo') {
+      return rel.startsWith('/administrativo');
     }
     return rel === m || rel.startsWith(`${m}/`);
   });

@@ -19,6 +19,7 @@ import { parseObraModulosPermitidosDoUsuario } from '../config/obraModulos';
 import { parseObraIdsPermitidosDoUsuario } from '../config/setores';
 import {
   Incendio,
+  ClienteAdministrativo,
   Disciplina,
   Severidade,
   Collaborator,
@@ -39,6 +40,7 @@ import {
 } from '../types';
 
 const INCENDIOS_COLLECTION = 'incendios';
+const CLIENTES_ADMIN_COLLECTION = 'clientesAdministrativos';
 const USERS_COLLECTION = 'users';
 const OBRA_SERVICES_COLLECTION = 'obraServices';
 const OBRA_NOTES_COLLECTION = 'obraNotes';
@@ -414,6 +416,69 @@ export const updateIncendio = async (id: string, incendio: Partial<Omit<Incendio
 
 export const deleteIncendio = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, INCENDIOS_COLLECTION, id));
+};
+
+const mapClienteAdministrativoDoc = (id: string, data: Record<string, unknown>): ClienteAdministrativo => ({
+  id,
+  setor: String(data.setor ?? ''),
+  obraId: String(data.obraId ?? ''),
+  setorLocal: String(data.setorLocal ?? ''),
+  corredor: String(data.corredor ?? ''),
+  box: String(data.box ?? ''),
+  nomeCliente: String(data.nomeCliente ?? ''),
+  status: data.status === 'fechado' ? 'fechado' : 'aberto',
+  inadimplencia: Boolean(data.inadimplencia),
+  processoJudicial: Boolean(data.processoJudicial),
+  criadoPor: data.criadoPor ? String(data.criadoPor) : undefined,
+  coordenadas: {
+    x: Number((data.coordenadas as { x?: number })?.x ?? 0),
+    y: Number((data.coordenadas as { y?: number })?.y ?? 0),
+    page: Number((data.coordenadas as { page?: number })?.page ?? 1),
+  },
+  createdAt:
+    (data.createdAt as { toDate?: () => Date })?.toDate?.().toISOString() || String(data.createdAt ?? ''),
+  updatedAt:
+    (data.updatedAt as { toDate?: () => Date })?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
+});
+
+export const getClientesAdministrativos = async (setor?: string): Promise<ClienteAdministrativo[]> => {
+  const q = setor
+    ? query(collection(db, CLIENTES_ADMIN_COLLECTION), where('setor', '==', setor))
+    : query(collection(db, CLIENTES_ADMIN_COLLECTION), orderBy('createdAt', 'desc'));
+
+  const querySnapshot = await getDocs(q);
+  const results = querySnapshot.docs.map((snap) => mapClienteAdministrativoDoc(snap.id, snap.data()));
+
+  if (setor) {
+    results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  return results;
+};
+
+export const createClienteAdministrativo = async (
+  cliente: Omit<ClienteAdministrativo, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  const docRef = await addDoc(collection(db, CLIENTES_ADMIN_COLLECTION), {
+    ...cliente,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+  return docRef.id;
+};
+
+export const updateClienteAdministrativo = async (
+  id: string,
+  cliente: Partial<Omit<ClienteAdministrativo, 'id' | 'createdAt'>>
+): Promise<void> => {
+  await updateDoc(doc(db, CLIENTES_ADMIN_COLLECTION, id), {
+    ...cliente,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const deleteClienteAdministrativo = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, CLIENTES_ADMIN_COLLECTION, id));
 };
 
 export const getObraServices = async (obraId: string): Promise<ObraService[]> => {

@@ -10,6 +10,8 @@ import ObraPlanningPage from './pages/ObraPlanningPage';
 import ObraRDOPage from './pages/ObraRDOPage';
 import ObraRDOListPage from './pages/ObraRDOListPage';
 import ObraIncendiosPage from './pages/ObraIncendiosPage';
+import ObraAdministrativoPage from './pages/ObraAdministrativoPage';
+import SetorAdministrativoPage from './pages/SetorAdministrativoPage';
 import SetorPage from './pages/SetorPage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
@@ -264,6 +266,22 @@ function App() {
               element={
                 <ProtectedObraModuloRoute modulo="incendios">
                   <ObraIncendiosPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="administrativo"
+              element={
+                <ProtectedObraModuloRoute modulo="administrativo">
+                  <ObraAdministrativoPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
+            <Route
+              path="administrativo/setor/:setorId"
+              element={
+                <ProtectedObraModuloRoute modulo="administrativo">
+                  <SetorAdministrativoPage />
                 </ProtectedObraModuloRoute>
               }
             />

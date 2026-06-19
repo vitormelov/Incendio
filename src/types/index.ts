@@ -1,3 +1,27 @@
+export type ClienteAdministrativoStatus = 'aberto' | 'fechado';
+
+export interface ClienteAdministrativo {
+  id: string;
+  /** ID da planta/setor (mesmo usado em incêndios). */
+  setor: string;
+  obraId: string;
+  setorLocal: string;
+  corredor: string;
+  box: string;
+  nomeCliente: string;
+  status: ClienteAdministrativoStatus;
+  inadimplencia: boolean;
+  processoJudicial: boolean;
+  criadoPor?: string;
+  coordenadas: {
+    x: number;
+    y: number;
+    page: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type Disciplina = 'civil' | 'instalacoes' | 'equipamentos' | 'estrutural' | 'impermeabilizacao' | 'ambientacao';
 
 export type Severidade = 1 | 2 | 3;

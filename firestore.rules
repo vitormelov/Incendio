@@ -33,6 +33,14 @@ service cloud.firestore {
       allow delete: if signedIn();
     }
 
+    // Clientes (módulo Administrativo)
+    match /clientesAdministrativos/{clienteId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn();
+      allow delete: if signedIn();
+    }
+
     // Serviços por obra (pacote/descrição/verba)
     match /obraServices/{serviceId} {
       allow read: if signedIn();
