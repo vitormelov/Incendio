@@ -4,62 +4,62 @@ const estacaoFashionSetores: Setor[] = [
   {
     id: 'Fachada General Sampaio',
     nome: 'Fachada General Sampaio',
-    pdfPath: '/pdfs/estacaoFashion/fachada-general.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/fachada-general.pdf',
   },
   {
     id: 'Fachada Castro e Silva',
     nome: 'Fachada Castro e Silva',
-    pdfPath: '/pdfs/estacaoFashion/fachada-castroesilva.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/fachada-castroesilva.pdf',
   },
   {
     id: 'Fachada 24 de Maio',
     nome: 'Fachada 24 de Maio',
-    pdfPath: '/pdfs/estacaoFashion/fachada-24demaio.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/fachada-24demaio.pdf',
   },
   {
     id: 'subsolo',
     nome: 'Subsolo',
-    pdfPath: '/pdfs/estacaoFashion/subsolo.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/subsolo.pdf',
   },
   {
     id: 'setor-azul',
     nome: 'Setor Azul',
-    pdfPath: '/pdfs/estacaoFashion/setor-azul.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/setor-azul.pdf',
   },
   {
     id: 'setor-amarelo',
     nome: 'Setor Amarelo',
-    pdfPath: '/pdfs/estacaoFashion/setor-amarelo.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/setor-amarelo.pdf',
   },
   {
     id: 'setor-laranja',
     nome: 'Setor Laranja',
-    pdfPath: '/pdfs/estacaoFashion/setor-laranja.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/setor-laranja.pdf',
   },
   {
     id: 'setor-verde',
     nome: 'Setor Verde',
-    pdfPath: '/pdfs/estacaoFashion/setor-verde.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/setor-verde.pdf',
   },
   {
     id: 'setor-branco',
     nome: 'Setor Branco',
-    pdfPath: '/pdfs/estacaoFashion/setor-branco.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/setor-branco.pdf',
   },
   {
     id: 'setor-vermelho',
     nome: 'Setor Vermelho',
-    pdfPath: '/pdfs/estacaoFashion/setor-vermelho.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/setor-vermelho.pdf',
   },
   {
     id: 'estac-coberto',
     nome: 'Estacionamento Coberto',
-    pdfPath: '/pdfs/estacaoFashion/estac-coberto.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/estac-coberto.pdf',
   },
   {
     id: 'estac-descoberto',
     nome: 'Estacionamento Descoberto',
-    pdfPath: '/pdfs/estacaoFashion/estac-descoberto.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/estacaoFashion/estac-descoberto.pdf',
   },
 ];
 
@@ -67,7 +67,7 @@ const termacoSetores: Setor[] = [
   {
     id: 'termaco-geral',
     nome: 'Geral',
-    pdfPath: '/pdfs/termaco/termaco.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/termaco/termaco.pdf',
   },
 ];
 
@@ -75,7 +75,7 @@ const termacoTerraplanagemSetores: Setor[] = [
   {
     id: 'termaco-terraplanagem-geral',
     nome: 'Geral',
-    pdfPath: '/pdfs/termacoTerraplanagem/termacoTerraplanagem.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/termacoTerraplanagem/termacoTerraplanagem.pdf',
   },
 ];
 
@@ -83,47 +83,47 @@ const hotelCentralSetores: Setor[] = [
   {
     id: 'hotel-central-fachada',
     nome: 'Fachada',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-fachada.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-fachada.pdf',
   },
   {
     id: 'hotel-central-subsolo',
     nome: 'Subsolo',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-subsolo.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-subsolo.pdf',
   },
   {
     id: 'hotel-central-terreo',
     nome: 'Térreo',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-terreo.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-terreo.pdf',
   },
   {
     id: 'hotel-central-tipo',
     nome: 'Planta tipo',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-tipo.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-tipo.pdf',
   },
   {
     id: 'hotel-central-corte',
     nome: 'Corte',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-corte.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-corte.pdf',
   },
   {
     id: 'hotel-central-cobertura',
     nome: 'Cobertura',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-cobertura.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-cobertura.pdf',
   },
   {
     id: 'hotel-central-convencoes',
     nome: 'Convenções',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-convencoes.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-convencoes.pdf',
   },
   {
     id: 'hotel-central-restaurante',
     nome: 'Restaurante',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-restaurante.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-restaurante.pdf',
   },
   {
     id: 'hotel-central-fitness',
     nome: 'Fitness',
-    pdfPath: '/pdfs/hotelCentral/hotel-central-fitness.pdf',
+    pdfPath: '/pdfs/pdfsIncendio/hotelCentral/hotel-central-fitness.pdf',
   },
 ];
 

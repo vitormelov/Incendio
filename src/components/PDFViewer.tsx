@@ -144,10 +144,10 @@ export default function PDFViewer({
       {/* Visualizador de PDF */}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-auto bg-gray-200 p-4 relative"
+        className="flex-1 overflow-auto bg-gray-200"
       >
-        <div className="flex justify-center items-start">
-          <div className="relative inline-block">
+        <div className="p-4 min-w-full w-max flex justify-center">
+          <div className="relative inline-block shrink-0">
             <Document
               file={pdfPath}
               onLoadSuccess={onDocumentLoadSuccess}

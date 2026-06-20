@@ -11,7 +11,7 @@ import {
   filterClientesAdministrativos,
   type ClienteAdminListFilters,
 } from '../utils/filterClientesAdministrativos';
-import { getSetorById } from '../config/setores';
+import { getSetorAdministrativoById } from '../config/setoresAdministrativo';
 import {
   createClienteAdministrativo,
   deleteClienteAdministrativo,
@@ -36,7 +36,7 @@ export default function SetorAdministrativoPage() {
     [clientes, listFilters]
   );
 
-  const setor = setorId ? getSetorById(setorId) : null;
+  const setor = setorId ? getSetorAdministrativoById(setorId) : null;
   const voltarHref = obraId ? `/obra/${obraId}/administrativo` : '/';
 
   useEffect(() => {
@@ -85,6 +85,22 @@ export default function SetorAdministrativoPage() {
     } else {
       setReadOnlyView(true);
       setShowForm(true);
+    }
+  };
+
+  const handleMarkMove = async (
+    cliente: ClienteAdministrativo,
+    coordenadas: { x: number; y: number; page: number }
+  ) => {
+    try {
+      await updateClienteAdministrativo(cliente.id, { coordenadas });
+      setClientes((prev) =>
+        prev.map((c) => (c.id === cliente.id ? { ...c, coordenadas } : c))
+      );
+    } catch (error) {
+      console.error('Erro ao mover pino:', error);
+      alert('Erro ao mover o pino');
+      await loadClientes();
     }
   };
 
@@ -170,6 +186,7 @@ export default function SetorAdministrativoPage() {
             clientes={clientes}
             onAddMark={handleAddMark}
             onMarkClick={handlePdfMarkClick}
+            onMarkMove={canManage ? handleMarkMove : undefined}
             selectedCliente={selectedCliente}
             allowCreateMarks={canManage}
           />

@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import type { ClienteAdministrativo, ClienteAdministrativoStatus } from '../types';
-import { SETOR_LOCAL_OPCOES, isSetorLocalOpcao } from '../config/clienteAdministrativoSetores';
+import {
+  getSetorLocalOpcoesParaPlanta,
+  getSetorLocalPadraoParaPlanta,
+  type SetorLocalOpcao,
+} from '../config/clienteAdministrativoSetores';
 import { getClienteAdministrativoPinColor } from '../utils/clienteAdministrativoPinColor';
 
 interface ClienteAdministrativoFormProps {
@@ -49,9 +53,12 @@ export default function ClienteAdministrativoForm({
         processoJudicial: cliente.processoJudicial,
       });
     } else {
-      setFormData(emptyForm());
+      setFormData({
+        ...emptyForm(),
+        setorLocal: getSetorLocalPadraoParaPlanta(setorPlanta),
+      });
     }
-  }, [cliente]);
+  }, [cliente, setorPlanta]);
 
   const preview: ClienteAdministrativo = {
     id: cliente?.id ?? 'preview',
@@ -97,13 +104,15 @@ export default function ClienteAdministrativoForm({
   const pinColor = getClienteAdministrativoPinColor(preview);
 
   const setorOptions = useMemo(() => {
-    const base = [...SETOR_LOCAL_OPCOES];
+    const base = [...getSetorLocalOpcoesParaPlanta(setorPlanta)];
     const atual = formData.setorLocal.trim();
-    if (atual && !isSetorLocalOpcao(atual)) {
+    if (atual && !base.includes(atual as SetorLocalOpcao)) {
       return [atual, ...base];
     }
     return base;
-  }, [formData.setorLocal]);
+  }, [formData.setorLocal, setorPlanta]);
+
+  const setorUnico = setorOptions.length === 1;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -131,11 +140,11 @@ export default function ClienteAdministrativoForm({
             <select
               value={formData.setorLocal}
               onChange={(e) => setFormData((p) => ({ ...p, setorLocal: e.target.value }))}
-              disabled={readOnly}
+              disabled={readOnly || setorUnico}
               required
               className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"
             >
-              <option value="">Selecione o setor</option>
+              {!setorUnico && <option value="">Selecione o setor</option>}
               {setorOptions.map((op) => (
                 <option key={op} value={op}>
                   {op}

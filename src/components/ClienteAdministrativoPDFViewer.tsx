@@ -4,7 +4,6 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import type { ClienteAdministrativo } from '../types';
 import {
   getClienteAdministrativoPinColor,
-  getClienteAdministrativoPinLabel,
 } from '../utils/clienteAdministrativoPinColor';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs`;
@@ -14,15 +13,19 @@ interface ClienteAdministrativoPDFViewerProps {
   clientes: ClienteAdministrativo[];
   onAddMark: (x: number, y: number, page: number) => void;
   onMarkClick: (cliente: ClienteAdministrativo) => void;
+  onMarkMove?: (cliente: ClienteAdministrativo, coordenadas: { x: number; y: number; page: number }) => void;
   selectedCliente?: ClienteAdministrativo | null;
   allowCreateMarks?: boolean;
 }
+
+const DRAG_THRESHOLD_PX = 4;
 
 export default function ClienteAdministrativoPDFViewer({
   pdfPath,
   clientes,
   onAddMark,
   onMarkClick,
+  onMarkMove,
   selectedCliente,
   allowCreateMarks = true,
 }: ClienteAdministrativoPDFViewerProps) {
@@ -30,8 +33,29 @@ export default function ClienteAdministrativoPDFViewer({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [pageWidth, setPageWidth] = useState<number>(800);
+  const [dragPreview, setDragPreview] = useState<{ clienteId: string; x: number; y: number } | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const dragPointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const dragSessionRef = useRef<{ clienteId: string; moved: boolean } | null>(null);
+  const skipOverlayClickRef = useRef(false);
+  const clientesRef = useRef(clientes);
+  const onMarkClickRef = useRef(onMarkClick);
+  const onMarkMoveRef = useRef(onMarkMove);
+
+  clientesRef.current = clientes;
+  onMarkClickRef.current = onMarkClick;
+  onMarkMoveRef.current = onMarkMove;
+
+  const getCoordsFromClientPoint = useCallback((clientX: number, clientY: number) => {
+    if (!overlayRef.current) return null;
+    const rect = overlayRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+    const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+    return { x, y, page: currentPage };
+  }, [currentPage]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -44,8 +68,92 @@ export default function ClienteAdministrativoPDFViewer({
     setTotalPages(numPages);
   };
 
+  useEffect(() => {
+    if (!dragActive || !allowCreateMarks) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const start = dragPointerStartRef.current;
+      if (start) {
+        const hasMoved =
+          Math.hypot(event.clientX - start.x, event.clientY - start.y) >= DRAG_THRESHOLD_PX;
+        if (hasMoved && dragSessionRef.current) {
+          dragSessionRef.current.moved = true;
+        }
+      }
+
+      const coords = getCoordsFromClientPoint(event.clientX, event.clientY);
+      if (!coords || !dragSessionRef.current) return;
+
+      setDragPreview({
+        clienteId: dragSessionRef.current.clienteId,
+        x: coords.x,
+        y: coords.y,
+      });
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      const session = dragSessionRef.current;
+      dragSessionRef.current = null;
+      dragPointerStartRef.current = null;
+      setDragPreview(null);
+      setDragActive(false);
+      document.body.style.removeProperty('user-select');
+      document.body.style.removeProperty('cursor');
+
+      if (!session) return;
+
+      const cliente = clientesRef.current.find((c) => c.id === session.clienteId);
+      if (!cliente) return;
+
+      if (session.moved) {
+        skipOverlayClickRef.current = true;
+        const coords = getCoordsFromClientPoint(event.clientX, event.clientY);
+        if (coords) {
+          onMarkMoveRef.current?.(cliente, coords);
+        }
+        return;
+      }
+
+      onMarkClickRef.current(cliente);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.removeProperty('user-select');
+      document.body.style.removeProperty('cursor');
+    };
+  }, [allowCreateMarks, dragActive, getCoordsFromClientPoint]);
+
+  const handlePinMouseDown = useCallback(
+    (event: React.MouseEvent, cliente: ClienteAdministrativo) => {
+      event.stopPropagation();
+      if (!allowCreateMarks) return;
+
+      dragPointerStartRef.current = { x: event.clientX, y: event.clientY };
+      dragSessionRef.current = { clienteId: cliente.id, moved: false };
+      setDragPreview({
+        clienteId: cliente.id,
+        x: cliente.coordenadas.x,
+        y: cliente.coordenadas.y,
+      });
+      setDragActive(true);
+    },
+    [allowCreateMarks]
+  );
+
   const handleOverlayClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
+      if (skipOverlayClickRef.current) {
+        skipOverlayClickRef.current = false;
+        return;
+      }
+      if (dragActive) return;
       if (!overlayRef.current) return;
 
       const rect = overlayRef.current.getBoundingClientRect();
@@ -57,7 +165,7 @@ export default function ClienteAdministrativoPDFViewer({
         const distance = Math.sqrt(
           Math.pow(x - c.coordenadas.x, 2) + Math.pow(y - c.coordenadas.y, 2)
         );
-        return distance < 2;
+        return distance < 1.5;
       });
 
       if (clicked) {
@@ -66,7 +174,7 @@ export default function ClienteAdministrativoPDFViewer({
         onAddMark(x, y, currentPage);
       }
     },
-    [clientes, currentPage, onAddMark, onMarkClick, allowCreateMarks]
+    [clientes, currentPage, dragActive, onAddMark, onMarkClick, allowCreateMarks]
   );
 
   const currentPageClientes = clientes.filter((c) => c.coordenadas.page === currentPage);
@@ -132,9 +240,9 @@ export default function ClienteAdministrativoPDFViewer({
         </div>
       </div>
 
-      <div ref={containerRef} className="flex-1 overflow-auto bg-gray-200 p-4 relative">
-        <div className="flex justify-center items-start">
-          <div className="relative inline-block">
+      <div ref={containerRef} className="flex-1 overflow-auto bg-gray-200">
+        <div className="p-4 min-w-full w-max flex justify-center">
+          <div className="relative inline-block shrink-0">
             <Document
               file={pdfPath}
               onLoadSuccess={onDocumentLoadSuccess}
@@ -165,32 +273,47 @@ export default function ClienteAdministrativoPDFViewer({
                   {currentPageClientes.map((cliente) => {
                     const color = getClienteAdministrativoPinColor(cliente);
                     const isSelected = selectedCliente?.id === cliente.id;
-                    const label = getClienteAdministrativoPinLabel(cliente);
+                    const isDragging = dragPreview?.clienteId === cliente.id;
+                    const displayX = isDragging ? dragPreview.x : cliente.coordenadas.x;
+                    const displayY = isDragging ? dragPreview.y : cliente.coordenadas.y;
                     const nome = (cliente.nomeCliente || '').trim() || 'Sem cliente';
+                    const box = (cliente.box || '').trim() || '—';
+                    const corredor = (cliente.corredor || '').trim() || '—';
 
                     return (
                       <div
                         key={cliente.id}
+                        onMouseDown={(e) => handlePinMouseDown(e, cliente)}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (allowCreateMarks) return;
                           onMarkClick(cliente);
                         }}
-                        className="absolute cursor-pointer transition-all hover:scale-125 z-10"
+                        className={`group absolute flex items-center justify-center w-5 h-5 z-10 hover:z-50 ${
+                          allowCreateMarks ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                        } ${isDragging ? 'z-50' : ''} ${isSelected ? 'z-40' : ''}`}
                         style={{
-                          left: `${cliente.coordenadas.x}%`,
-                          top: `${cliente.coordenadas.y}%`,
+                          left: `${displayX}%`,
+                          top: `${displayY}%`,
                           transform: 'translate(-50%, -50%)',
                         }}
-                        title={`${nome} — Box ${cliente.box || '—'}`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg ${
-                            isSelected ? 'ring-4 ring-blue-400' : ''
-                          }`}
+                          className={`w-2.5 h-2.5 rounded-full shadow-md ring-1 ring-white/80 transition-transform ${
+                            isDragging ? 'scale-150' : 'group-hover:scale-150'
+                          } ${isSelected ? 'ring-2 ring-blue-400 ring-offset-1' : ''}`}
                           style={{ backgroundColor: color }}
-                        >
-                          {label}
-                        </div>
+                        />
+                        {!isDragging && (
+                          <div className="pointer-events-none absolute left-1/2 bottom-full mb-1 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                            <div className="rounded-md bg-gray-900 px-2.5 py-1.5 text-xs text-white shadow-lg whitespace-nowrap">
+                              <p className="font-semibold">{nome}</p>
+                              <p className="text-gray-300">
+                                Box {box} · Corredor {corredor}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

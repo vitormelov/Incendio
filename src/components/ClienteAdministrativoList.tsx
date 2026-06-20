@@ -1,7 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import type { ClienteAdministrativo } from '../types';
 import { getClienteAdministrativoPinColor } from '../utils/clienteAdministrativoPinColor';
-import { getSetorById } from '../config/setores';
+import { getSetorAdministrativoById } from '../config/setoresAdministrativo';
 
 interface ClienteAdministrativoListProps {
   clientes: ClienteAdministrativo[];
@@ -50,7 +50,7 @@ export default function ClienteAdministrativoList({
         <tbody className="divide-y divide-gray-200 bg-white">
           {clientes.map((c) => {
             const color = getClienteAdministrativoPinColor(c);
-            const plantaNome = getSetorById(c.setor)?.nome ?? c.setor;
+            const plantaNome = getSetorAdministrativoById(c.setor)?.nome ?? c.setor;
             return (
               <tr key={c.id} className="hover:bg-gray-50">
                 <td className="px-3 py-3">

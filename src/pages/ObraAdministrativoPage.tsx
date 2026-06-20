@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Briefcase, FileText, List } from 'lucide-react';
-import { getObraById, getSetoresByObraId } from '../config/setores';
+import { ArrowLeft, Briefcase, FileText, LayoutDashboard, List } from 'lucide-react';
+import { getObraById } from '../config/setores';
+import { getSetoresAdministrativosByObraId } from '../config/setoresAdministrativo';
 import ClienteAdministrativoList from '../components/ClienteAdministrativoList';
 import ClienteAdministrativoForm from '../components/ClienteAdministrativoForm';
 import ClienteAdministrativoFilters from '../components/ClienteAdministrativoFilters';
+import ClienteAdministrativoDashboard from '../components/ClienteAdministrativoDashboard';
 import type { ClienteAdministrativo } from '../types';
 import {
   emptyClienteAdminFilters,
   filterClientesAdministrativos,
   type ClienteAdminListFilters,
 } from '../utils/filterClientesAdministrativos';
+import { computeClienteAdministrativoStats } from '../utils/clienteAdministrativoStats';
 import {
   deleteClienteAdministrativo,
   getClientesAdministrativos,
@@ -20,7 +23,7 @@ import { canManageObraData } from '../services/auth';
 
 export default function ObraAdministrativoPage() {
   const { obraId } = useParams<{ obraId: string }>();
-  const [tab, setTab] = useState<'projetos' | 'clientes'>('projetos');
+  const [tab, setTab] = useState<'projetos' | 'clientes' | 'dashboard'>('projetos');
   const [allClientes, setAllClientes] = useState<ClienteAdministrativo[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [errorList, setErrorList] = useState('');
@@ -30,7 +33,7 @@ export default function ObraAdministrativoPage() {
   const [listFilters, setListFilters] = useState<ClienteAdminListFilters>(emptyClienteAdminFilters);
 
   const obra = obraId ? getObraById(obraId) : undefined;
-  const setores = obraId ? getSetoresByObraId(obraId) : [];
+  const setores = obraId ? getSetoresAdministrativosByObraId(obraId) : [];
 
   useEffect(() => {
     const run = async () => {
@@ -74,6 +77,11 @@ export default function ObraAdministrativoPage() {
   const filtered = useMemo(
     () => filterClientesAdministrativos(allClientes, listFilters),
     [allClientes, listFilters]
+  );
+
+  const dashboardStats = useMemo(
+    () => computeClienteAdministrativoStats(allClientes),
+    [allClientes]
   );
 
   const handleDelete = async (id: string) => {
@@ -152,6 +160,18 @@ export default function ObraAdministrativoPage() {
             <List size={18} className="mr-2" />
             Clientes ({filtered.length})
           </button>
+          <button
+            type="button"
+            onClick={() => setTab('dashboard')}
+            className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-medium border ${
+              tab === 'dashboard'
+                ? 'bg-violet-600 text-white border-violet-600'
+                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <LayoutDashboard size={18} className="mr-2" />
+            Dashboard
+          </button>
         </div>
 
         {tab === 'projetos' && (
@@ -191,11 +211,11 @@ export default function ObraAdministrativoPage() {
               </span>
               {' • '}
               <span className="inline-flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> processo judicial (prevalece)
+                <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#FFBF00' }} /> processo judicial (prevalece)
               </span>
               {' • '}
               <span className="inline-flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> inadimplência
+                <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#FF6D00' }} /> inadimplência
               </span>
               {' • '}
               <span className="inline-flex items-center gap-1">
@@ -207,6 +227,19 @@ export default function ObraAdministrativoPage() {
               </span>
             </div>
           </>
+        )}
+
+        {tab === 'dashboard' && (
+          <div className="space-y-4">
+            {errorList && (
+              <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700">{errorList}</div>
+            )}
+            <ClienteAdministrativoDashboard
+              geral={dashboardStats.geral}
+              porSetor={dashboardStats.porSetor}
+              loading={loadingList}
+            />
+          </div>
         )}
 
         {tab === 'clientes' && (
@@ -231,6 +264,7 @@ export default function ObraAdministrativoPage() {
                 }}
                 onDelete={canManage ? handleDelete : undefined}
                 showActions={canManage}
+                showPlantaColumn={false}
                 emptyMessage={
                   allClientes.length > 0
                     ? 'Nenhum cliente corresponde aos filtros.'
