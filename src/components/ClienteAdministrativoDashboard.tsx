@@ -40,6 +40,7 @@ function SetorCard({ stats }: { stats: ClienteAdministrativoSetorStats }) {
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-3">Boxes no setor</p>
 
       <div className="space-y-3">
+        <MetricBar label="Disponíveis" count={stats.disponiveis} pct={stats.disponiveisPct} color="#3B82F6" />
         <MetricBar label="Abertos" count={stats.abertos} pct={stats.abertosPct} color="#22C55E" />
         <MetricBar label="Fechados" count={stats.fechados} pct={stats.fechadosPct} color="#EF4444" />
         <MetricBar
@@ -75,7 +76,12 @@ export default function ClienteAdministrativoDashboard({
         <p className="text-4xl font-bold text-violet-900">{geral.totalBoxes}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium uppercase text-gray-500 mb-2">Disponíveis</p>
+          <p className="text-2xl font-bold text-blue-600">{geral.disponiveis}</p>
+          <p className="text-sm text-gray-600">{geral.disponiveisPct}% do total</p>
+        </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase text-gray-500 mb-2">Status — abertos</p>
           <p className="text-2xl font-bold text-green-600">{geral.abertos}</p>

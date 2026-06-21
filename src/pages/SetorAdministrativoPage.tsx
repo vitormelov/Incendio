@@ -13,9 +13,14 @@ import {
 } from '../utils/filterClientesAdministrativos';
 import { getSetorAdministrativoById } from '../config/setoresAdministrativo';
 import {
+  findClienteDuplicado,
+  getClienteDuplicadoMensagem,
+} from '../utils/clienteAdministrativoDuplicate';
+import {
   createClienteAdministrativo,
   deleteClienteAdministrativo,
   getClientesAdministrativos,
+  getClientesAdministrativosByObraId,
   updateClienteAdministrativo,
 } from '../services/firestore';
 import { getCurrentUser, canManageObraData } from '../services/auth';
@@ -23,6 +28,7 @@ import { getCurrentUser, canManageObraData } from '../services/auth';
 export default function SetorAdministrativoPage() {
   const { obraId, setorId } = useParams<{ obraId: string; setorId: string }>();
   const [clientes, setClientes] = useState<ClienteAdministrativo[]>([]);
+  const [clientesObra, setClientesObra] = useState<ClienteAdministrativo[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<ClienteAdministrativo | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formCoordenadas, setFormCoordenadas] = useState<{ x: number; y: number; page: number } | null>(null);
@@ -55,14 +61,25 @@ export default function SetorAdministrativoPage() {
   }, [obraId]);
 
   useEffect(() => {
-    if (setorId) void loadClientes();
-  }, [setorId]);
+    if (setorId && obraId) void loadClientes();
+  }, [setorId, obraId]);
+
+  const loadClientesObra = async () => {
+    if (!obraId) return [];
+    const data = await getClientesAdministrativosByObraId(obraId);
+    setClientesObra(data);
+    return data;
+  };
 
   const loadClientes = async () => {
-    if (!setorId) return;
+    if (!setorId || !obraId) return;
     try {
-      const data = await getClientesAdministrativos(setorId);
+      const [data, obraData] = await Promise.all([
+        getClientesAdministrativos(setorId),
+        getClientesAdministrativosByObraId(obraId),
+      ]);
       setClientes(data);
+      setClientesObra(obraData);
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
       alert('Erro ao carregar clientes');
@@ -107,6 +124,19 @@ export default function SetorAdministrativoPage() {
   const handleSave = async (data: Omit<ClienteAdministrativo, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!obraId) return;
     try {
+      const todosObra = await loadClientesObra();
+      const duplicado = findClienteDuplicado(
+        todosObra,
+        data.setorLocal,
+        data.corredor,
+        data.box,
+        selectedCliente?.id
+      );
+      if (duplicado) {
+        alert(getClienteDuplicadoMensagem(data.setorLocal, data.corredor, data.box));
+        return;
+      }
+
       const user = getCurrentUser();
       const criadoPor = selectedCliente?.criadoPor ?? user?.uid ?? undefined;
 
@@ -225,6 +255,7 @@ export default function SetorAdministrativoPage() {
           coordenadas={formCoordenadas}
           setorPlanta={setorId!}
           obraId={obraId}
+          clientesObra={clientesObra}
           onSave={handleSave}
           onDelete={canManage ? handleDelete : undefined}
           onCancel={() => {

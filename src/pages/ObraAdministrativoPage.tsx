@@ -15,6 +15,10 @@ import {
 } from '../utils/filterClientesAdministrativos';
 import { computeClienteAdministrativoStats } from '../utils/clienteAdministrativoStats';
 import {
+  findClienteDuplicado,
+  getClienteDuplicadoMensagem,
+} from '../utils/clienteAdministrativoDuplicate';
+import {
   deleteClienteAdministrativo,
   getClientesAdministrativos,
   updateClienteAdministrativo,
@@ -85,7 +89,6 @@ export default function ObraAdministrativoPage() {
   );
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir este cliente?')) return;
     try {
       await deleteClienteAdministrativo(id);
       await loadAll();
@@ -97,6 +100,17 @@ export default function ObraAdministrativoPage() {
 
   const handleSaveEdit = async (data: Omit<ClienteAdministrativo, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!selectedCliente) return;
+    const duplicado = findClienteDuplicado(
+      allClientes,
+      data.setorLocal,
+      data.corredor,
+      data.box,
+      selectedCliente.id
+    );
+    if (duplicado) {
+      alert(getClienteDuplicadoMensagem(data.setorLocal, data.corredor, data.box));
+      return;
+    }
     try {
       await updateClienteAdministrativo(selectedCliente.id, data);
       await loadAll();
@@ -207,7 +221,7 @@ export default function ObraAdministrativoPage() {
             <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
               <strong>Legenda dos pinos:</strong>{' '}
               <span className="inline-flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> sem cliente
+                <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> disponível
               </span>
               {' • '}
               <span className="inline-flex items-center gap-1">
@@ -282,6 +296,7 @@ export default function ObraAdministrativoPage() {
           coordenadas={null}
           setorPlanta={selectedCliente.setor}
           obraId={obraId}
+          clientesObra={allClientes}
           onSave={handleSaveEdit}
           onDelete={canManage ? handleDelete : undefined}
           onCancel={() => {

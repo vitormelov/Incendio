@@ -18,6 +18,10 @@ import { db } from '../firebase/config';
 import { parseObraModulosPermitidosDoUsuario } from '../config/obraModulos';
 import { parseObraIdsPermitidosDoUsuario } from '../config/setores';
 import {
+  normalizeClienteAdministrativoFields,
+  normalizeClienteAdministrativoPartial,
+} from '../utils/clienteAdministrativoPinColor';
+import {
   Incendio,
   ClienteAdministrativo,
   Disciplina,
@@ -418,28 +422,31 @@ export const deleteIncendio = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, INCENDIOS_COLLECTION, id));
 };
 
-const mapClienteAdministrativoDoc = (id: string, data: Record<string, unknown>): ClienteAdministrativo => ({
-  id,
-  setor: String(data.setor ?? ''),
-  obraId: String(data.obraId ?? ''),
-  setorLocal: String(data.setorLocal ?? ''),
-  corredor: String(data.corredor ?? ''),
-  box: String(data.box ?? ''),
-  nomeCliente: String(data.nomeCliente ?? ''),
-  status: data.status === 'fechado' ? 'fechado' : 'aberto',
-  inadimplencia: Boolean(data.inadimplencia),
-  processoJudicial: Boolean(data.processoJudicial),
-  criadoPor: data.criadoPor ? String(data.criadoPor) : undefined,
-  coordenadas: {
-    x: Number((data.coordenadas as { x?: number })?.x ?? 0),
-    y: Number((data.coordenadas as { y?: number })?.y ?? 0),
-    page: Number((data.coordenadas as { page?: number })?.page ?? 1),
-  },
-  createdAt:
-    (data.createdAt as { toDate?: () => Date })?.toDate?.().toISOString() || String(data.createdAt ?? ''),
-  updatedAt:
-    (data.updatedAt as { toDate?: () => Date })?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
-});
+const mapClienteAdministrativoDoc = (id: string, data: Record<string, unknown>): ClienteAdministrativo => {
+  const raw: ClienteAdministrativo = {
+    id,
+    setor: String(data.setor ?? ''),
+    obraId: String(data.obraId ?? ''),
+    setorLocal: String(data.setorLocal ?? ''),
+    corredor: String(data.corredor ?? ''),
+    box: String(data.box ?? ''),
+    nomeCliente: String(data.nomeCliente ?? ''),
+    status: data.status === 'fechado' ? 'fechado' : 'aberto',
+    inadimplencia: Boolean(data.inadimplencia),
+    processoJudicial: Boolean(data.processoJudicial),
+    criadoPor: data.criadoPor ? String(data.criadoPor) : undefined,
+    coordenadas: {
+      x: Number((data.coordenadas as { x?: number })?.x ?? 0),
+      y: Number((data.coordenadas as { y?: number })?.y ?? 0),
+      page: Number((data.coordenadas as { page?: number })?.page ?? 1),
+    },
+    createdAt:
+      (data.createdAt as { toDate?: () => Date })?.toDate?.().toISOString() || String(data.createdAt ?? ''),
+    updatedAt:
+      (data.updatedAt as { toDate?: () => Date })?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
+  };
+  return normalizeClienteAdministrativoFields(raw);
+};
 
 export const getClientesAdministrativos = async (setor?: string): Promise<ClienteAdministrativo[]> => {
   const q = setor
@@ -456,11 +463,20 @@ export const getClientesAdministrativos = async (setor?: string): Promise<Client
   return results;
 };
 
+export const getClientesAdministrativosByObraId = async (obraId: string): Promise<ClienteAdministrativo[]> => {
+  const q = query(collection(db, CLIENTES_ADMIN_COLLECTION), where('obraId', '==', obraId));
+  const querySnapshot = await getDocs(q);
+  const results = querySnapshot.docs.map((snap) => mapClienteAdministrativoDoc(snap.id, snap.data()));
+  results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return results;
+};
+
 export const createClienteAdministrativo = async (
   cliente: Omit<ClienteAdministrativo, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> => {
+  const normalized = normalizeClienteAdministrativoFields(cliente);
   const docRef = await addDoc(collection(db, CLIENTES_ADMIN_COLLECTION), {
-    ...cliente,
+    ...normalized,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
@@ -471,8 +487,9 @@ export const updateClienteAdministrativo = async (
   id: string,
   cliente: Partial<Omit<ClienteAdministrativo, 'id' | 'createdAt'>>
 ): Promise<void> => {
+  const normalized = normalizeClienteAdministrativoPartial(cliente);
   await updateDoc(doc(db, CLIENTES_ADMIN_COLLECTION, id), {
-    ...cliente,
+    ...normalized,
     updatedAt: Timestamp.now(),
   });
 };

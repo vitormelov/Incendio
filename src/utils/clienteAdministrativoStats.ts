@@ -1,8 +1,11 @@
 import type { ClienteAdministrativo } from '../types';
 import { SETOR_LOCAL_OPCOES } from '../config/clienteAdministrativoSetores';
+import { isClienteAdministrativoDisponivel } from './clienteAdministrativoPinColor';
 
 export interface ClienteAdministrativoMetricas {
   totalBoxes: number;
+  disponiveis: number;
+  disponiveisPct: number;
   abertos: number;
   fechados: number;
   abertosPct: number;
@@ -25,6 +28,7 @@ function pct(count: number, total: number): number {
 
 function computeMetricas(clientes: ClienteAdministrativo[]): ClienteAdministrativoMetricas {
   const totalBoxes = clientes.length;
+  const disponiveis = clientes.filter(isClienteAdministrativoDisponivel).length;
   const abertos = clientes.filter((c) => c.status === 'aberto').length;
   const fechados = clientes.filter((c) => c.status === 'fechado').length;
   const inadimplentes = clientes.filter((c) => c.inadimplencia).length;
@@ -32,6 +36,8 @@ function computeMetricas(clientes: ClienteAdministrativo[]): ClienteAdministrati
 
   return {
     totalBoxes,
+    disponiveis,
+    disponiveisPct: pct(disponiveis, totalBoxes),
     abertos,
     fechados,
     abertosPct: pct(abertos, totalBoxes),

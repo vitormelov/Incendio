@@ -6,13 +6,18 @@ import {
   getSetorLocalPadraoParaPlanta,
   type SetorLocalOpcao,
 } from '../config/clienteAdministrativoSetores';
-import { getClienteAdministrativoPinColor } from '../utils/clienteAdministrativoPinColor';
+import { getClienteAdministrativoPinColor, normalizeClienteAdministrativoFields } from '../utils/clienteAdministrativoPinColor';
+import {
+  findClienteDuplicado,
+  getClienteDuplicadoMensagem,
+} from '../utils/clienteAdministrativoDuplicate';
 
 interface ClienteAdministrativoFormProps {
   cliente?: ClienteAdministrativo | null;
   coordenadas?: { x: number; y: number; page: number } | null;
   setorPlanta: string;
   obraId: string;
+  clientesObra?: ClienteAdministrativo[];
   onSave: (data: Omit<ClienteAdministrativo, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
@@ -24,7 +29,7 @@ const emptyForm = () => ({
   corredor: '',
   box: '',
   nomeCliente: '',
-  status: 'aberto' as ClienteAdministrativoStatus,
+  status: 'fechado' as ClienteAdministrativoStatus,
   inadimplencia: false,
   processoJudicial: false,
 });
@@ -34,12 +39,14 @@ export default function ClienteAdministrativoForm({
   coordenadas,
   setorPlanta,
   obraId,
+  clientesObra = [],
   onSave,
   onCancel,
   onDelete,
   readOnly = false,
 }: ClienteAdministrativoFormProps) {
   const [formData, setFormData] = useState(emptyForm);
+  const [duplicateError, setDuplicateError] = useState('');
 
   useEffect(() => {
     if (cliente) {
@@ -48,7 +55,7 @@ export default function ClienteAdministrativoForm({
         corredor: cliente.corredor,
         box: cliente.box,
         nomeCliente: cliente.nomeCliente,
-        status: cliente.status,
+        status: normalizeClienteAdministrativoFields(cliente).status,
         inadimplencia: cliente.inadimplencia,
         processoJudicial: cliente.processoJudicial,
       });
@@ -86,12 +93,30 @@ export default function ClienteAdministrativoForm({
       return;
     }
 
-    onSave({
+    const setorLocal = formData.setorLocal.trim();
+    const corredor = formData.corredor.trim();
+    const box = formData.box.trim();
+
+    const duplicado = findClienteDuplicado(
+      clientesObra,
+      setorLocal,
+      corredor,
+      box,
+      cliente?.id
+    );
+    if (duplicado) {
+      setDuplicateError(getClienteDuplicadoMensagem(setorLocal, corredor, box));
+      return;
+    }
+
+    setDuplicateError('');
+
+    const payload = normalizeClienteAdministrativoFields({
       setor: setorPlanta,
       obraId,
-      setorLocal: formData.setorLocal.trim(),
-      corredor: formData.corredor.trim(),
-      box: formData.box.trim(),
+      setorLocal,
+      corredor,
+      box,
       nomeCliente: formData.nomeCliente.trim(),
       status: formData.status,
       inadimplencia: formData.inadimplencia,
@@ -99,9 +124,12 @@ export default function ClienteAdministrativoForm({
       criadoPor: cliente?.criadoPor,
       coordenadas: coords,
     });
+
+    onSave(payload);
   };
 
   const pinColor = getClienteAdministrativoPinColor(preview);
+  const isDisponivel = !formData.nomeCliente.trim();
 
   const setorOptions = useMemo(() => {
     const base = [...getSetorLocalOpcoesParaPlanta(setorPlanta)];
@@ -135,11 +163,20 @@ export default function ClienteAdministrativoForm({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {duplicateError && (
+            <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {duplicateError}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Setor</label>
             <select
               value={formData.setorLocal}
-              onChange={(e) => setFormData((p) => ({ ...p, setorLocal: e.target.value }))}
+              onChange={(e) => {
+                setDuplicateError('');
+                setFormData((p) => ({ ...p, setorLocal: e.target.value }));
+              }}
               disabled={readOnly || setorUnico}
               required
               className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"
@@ -158,7 +195,10 @@ export default function ClienteAdministrativoForm({
             <input
               type="text"
               value={formData.corredor}
-              onChange={(e) => setFormData((p) => ({ ...p, corredor: e.target.value }))}
+              onChange={(e) => {
+                setDuplicateError('');
+                setFormData((p) => ({ ...p, corredor: e.target.value }));
+              }}
               disabled={readOnly}
               className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"
               placeholder="Ex.: Corredor 2"
@@ -170,7 +210,10 @@ export default function ClienteAdministrativoForm({
             <input
               type="text"
               value={formData.box}
-              onChange={(e) => setFormData((p) => ({ ...p, box: e.target.value }))}
+              onChange={(e) => {
+                setDuplicateError('');
+                setFormData((p) => ({ ...p, box: e.target.value }));
+              }}
               disabled={readOnly}
               className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"
               placeholder="Ex.: 12"
@@ -182,10 +225,17 @@ export default function ClienteAdministrativoForm({
             <input
               type="text"
               value={formData.nomeCliente}
-              onChange={(e) => setFormData((p) => ({ ...p, nomeCliente: e.target.value }))}
+              onChange={(e) => {
+                const nomeCliente = e.target.value;
+                setFormData((p) => ({
+                  ...p,
+                  nomeCliente,
+                  status: nomeCliente.trim() ? p.status : 'fechado',
+                }));
+              }}
               disabled={readOnly}
               className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"
-              placeholder="Opcional — sem nome o pino fica azul"
+              placeholder="Sem nome o box ficará disponível"
             />
           </div>
 
@@ -199,7 +249,7 @@ export default function ClienteAdministrativoForm({
                     name="status"
                     checked={formData.status === s}
                     onChange={() => setFormData((p) => ({ ...p, status: s }))}
-                    disabled={readOnly}
+                    disabled={readOnly || (s === 'aberto' && isDisponivel)}
                     className="text-violet-600"
                   />
                   {s === 'aberto' ? 'Aberto' : 'Fechado'}
@@ -257,8 +307,26 @@ export default function ClienteAdministrativoForm({
           </div>
 
           <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-600">
-            <strong>Legenda do pino:</strong> azul = sem cliente; amarelo = processo judicial (prevalece);
-            laranja = inadimplência; vermelho = fechado; verde = aberto sem pendências.
+            <strong>Legenda do pino:</strong>{' '}
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" /> disponível
+            </span>
+            {' • '}
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: '#FFBF00' }} /> processo judicial
+            </span>
+            {' • '}
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: '#FF6D00' }} /> inadimplência
+            </span>
+            {' • '}
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> fechado
+            </span>
+            {' • '}
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> aberto
+            </span>
           </div>
 
           {!readOnly && (

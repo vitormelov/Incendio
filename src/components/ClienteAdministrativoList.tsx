@@ -62,7 +62,7 @@ export default function ClienteAdministrativoList({
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                  {c.nomeCliente.trim() || <span className="text-gray-400 italic">Sem cliente</span>}
+                  {c.nomeCliente.trim() || <span className="text-gray-400 italic">Disponível</span>}
                 </td>
                 {showPlantaColumn && (
                   <td className="px-4 py-3 text-sm text-gray-700">{plantaNome}</td>
@@ -87,7 +87,11 @@ export default function ClienteAdministrativoList({
                       {onDelete && (
                         <button
                           type="button"
-                          onClick={() => onDelete(c.id)}
+                          onClick={() => {
+                            if (window.confirm('Tem certeza que deseja excluir este cliente?')) {
+                              onDelete(c.id);
+                            }
+                          }}
                           className="inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white hover:bg-red-700"
                           title="Excluir"
                         >

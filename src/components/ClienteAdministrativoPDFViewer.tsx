@@ -276,7 +276,7 @@ export default function ClienteAdministrativoPDFViewer({
                     const isDragging = dragPreview?.clienteId === cliente.id;
                     const displayX = isDragging ? dragPreview.x : cliente.coordenadas.x;
                     const displayY = isDragging ? dragPreview.y : cliente.coordenadas.y;
-                    const nome = (cliente.nomeCliente || '').trim() || 'Sem cliente';
+                    const nome = (cliente.nomeCliente || '').trim() || 'Disponível';
                     const box = (cliente.box || '').trim() || '—';
                     const corredor = (cliente.corredor || '').trim() || '—';
 
