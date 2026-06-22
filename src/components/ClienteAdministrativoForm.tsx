@@ -29,7 +29,7 @@ const emptyForm = () => ({
   corredor: '',
   box: '',
   nomeCliente: '',
-  status: 'fechado' as ClienteAdministrativoStatus,
+  status: 'disponivel' as ClienteAdministrativoStatus,
   inadimplencia: false,
   processoJudicial: false,
 });
@@ -230,7 +230,11 @@ export default function ClienteAdministrativoForm({
                 setFormData((p) => ({
                   ...p,
                   nomeCliente,
-                  status: nomeCliente.trim() ? p.status : 'fechado',
+                  status: nomeCliente.trim()
+                    ? p.status === 'disponivel'
+                      ? 'aberto'
+                      : p.status
+                    : 'disponivel',
                 }));
               }}
               disabled={readOnly}
@@ -241,21 +245,25 @@ export default function ClienteAdministrativoForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-            <div className="flex gap-4">
-              {(['aberto', 'fechado'] as const).map((s) => (
-                <label key={s} className="inline-flex items-center gap-2 text-sm text-gray-800">
-                  <input
-                    type="radio"
-                    name="status"
-                    checked={formData.status === s}
-                    onChange={() => setFormData((p) => ({ ...p, status: s }))}
-                    disabled={readOnly || (s === 'aberto' && isDisponivel)}
-                    className="text-violet-600"
-                  />
-                  {s === 'aberto' ? 'Aberto' : 'Fechado'}
-                </label>
-              ))}
-            </div>
+            {isDisponivel ? (
+              <p className="text-sm text-gray-700">Disponível</p>
+            ) : (
+              <div className="flex gap-4">
+                {(['aberto', 'fechado'] as const).map((s) => (
+                  <label key={s} className="inline-flex items-center gap-2 text-sm text-gray-800">
+                    <input
+                      type="radio"
+                      name="status"
+                      checked={formData.status === s}
+                      onChange={() => setFormData((p) => ({ ...p, status: s }))}
+                      disabled={readOnly}
+                      className="text-violet-600"
+                    />
+                    {s === 'aberto' ? 'Aberto' : 'Fechado'}
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

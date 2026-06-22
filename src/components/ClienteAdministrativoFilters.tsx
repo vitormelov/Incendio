@@ -1,3 +1,4 @@
+import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { SETOR_LOCAL_OPCOES } from '../config/clienteAdministrativoSetores';
 import type { ClienteAdminListFilters } from '../utils/filterClientesAdministrativos';
 import { emptyClienteAdminFilters } from '../utils/filterClientesAdministrativos';
@@ -7,6 +8,10 @@ interface ClienteAdministrativoFiltersProps {
   onChange: (filters: ClienteAdminListFilters) => void;
   totalCount: number;
   filteredCount: number;
+  onExportPdf?: () => void;
+  exportingPdf?: boolean;
+  onExportExcel?: () => void;
+  exportingExcel?: boolean;
 }
 
 const selectClass =
@@ -17,6 +22,10 @@ export default function ClienteAdministrativoFilters({
   onChange,
   totalCount,
   filteredCount,
+  onExportPdf,
+  exportingPdf = false,
+  onExportExcel,
+  exportingExcel = false,
 }: ClienteAdministrativoFiltersProps) {
   const patch = (partial: Partial<ClienteAdminListFilters>) => onChange({ ...filters, ...partial });
 
@@ -24,9 +33,35 @@ export default function ClienteAdministrativoFilters({
     <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-gray-800">Filtros</p>
-        <p className="text-xs text-gray-500">
-          {filteredCount} de {totalCount} cliente(s)
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs text-gray-500">
+            {filteredCount} de {totalCount} cliente(s)
+          </p>
+          {onExportPdf && (
+            <button
+              type="button"
+              onClick={onExportPdf}
+              disabled={filteredCount === 0 || exportingPdf || exportingExcel}
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+              title="Exportar lista filtrada em PDF"
+            >
+              <FileDown size={14} className="mr-1.5" />
+              {exportingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
+            </button>
+          )}
+          {onExportExcel && (
+            <button
+              type="button"
+              onClick={onExportExcel}
+              disabled={filteredCount === 0 || exportingPdf || exportingExcel}
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+              title="Exportar lista filtrada em Excel"
+            >
+              <FileSpreadsheet size={14} className="mr-1.5" />
+              {exportingExcel ? 'Gerando Excel...' : 'Exportar Excel'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div>
@@ -65,6 +100,7 @@ export default function ClienteAdministrativoFilters({
             className={selectClass}
           >
             <option value="">Todos</option>
+            <option value="disponivel">Disponível</option>
             <option value="aberto">Aberto</option>
             <option value="fechado">Fechado</option>
           </select>

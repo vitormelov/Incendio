@@ -1,4 +1,5 @@
 import type { ClienteAdministrativo, ClienteAdministrativoStatus } from '../types';
+import { isClienteAdministrativoDisponivel } from './clienteAdministrativoPinColor';
 
 export type ClienteAdminListFilters = {
   nomeCliente: string;
@@ -25,7 +26,11 @@ export function filterClientesAdministrativos(
   return clientes.filter((c) => {
     if (nomeQ && !(c.nomeCliente || '').toLowerCase().includes(nomeQ)) return false;
     if (filters.setorLocal && c.setorLocal !== filters.setorLocal) return false;
-    if (filters.status && c.status !== filters.status) return false;
+    if (filters.status === 'disponivel') {
+      if (!isClienteAdministrativoDisponivel(c)) return false;
+    } else if (filters.status === 'aberto' || filters.status === 'fechado') {
+      if (isClienteAdministrativoDisponivel(c) || c.status !== filters.status) return false;
+    }
     if (filters.inadimplencia === 'sim' && !c.inadimplencia) return false;
     if (filters.inadimplencia === 'nao' && c.inadimplencia) return false;
     if (filters.processoJudicial === 'sim' && !c.processoJudicial) return false;

@@ -1,6 +1,9 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import type { ClienteAdministrativo } from '../types';
-import { getClienteAdministrativoPinColor } from '../utils/clienteAdministrativoPinColor';
+import {
+  getClienteAdministrativoPinColor,
+  getClienteAdministrativoStatusLabel,
+} from '../utils/clienteAdministrativoPinColor';
 import { getSetorAdministrativoById } from '../config/setoresAdministrativo';
 
 interface ClienteAdministrativoListProps {
@@ -11,8 +14,6 @@ interface ClienteAdministrativoListProps {
   showPlantaColumn?: boolean;
   emptyMessage?: string;
 }
-
-const statusLabel = (s: ClienteAdministrativo['status']) => (s === 'fechado' ? 'Fechado' : 'Aberto');
 
 export default function ClienteAdministrativoList({
   clientes,
@@ -70,7 +71,7 @@ export default function ClienteAdministrativoList({
                 <td className="px-4 py-3 text-sm text-gray-700">{c.setorLocal || '—'}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">{c.corredor || '—'}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">{c.box || '—'}</td>
-                <td className="px-4 py-3 text-sm text-gray-700">{statusLabel(c.status)}</td>
+                <td className="px-4 py-3 text-sm text-gray-700">{getClienteAdministrativoStatusLabel(c)}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">{c.inadimplencia ? 'Sim' : 'Não'}</td>
                 <td className="px-4 py-3 text-sm text-gray-700">{c.processoJudicial ? 'Sim' : 'Não'}</td>
                 {showActions && (

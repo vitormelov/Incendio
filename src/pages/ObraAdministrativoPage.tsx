@@ -14,6 +14,8 @@ import {
   type ClienteAdminListFilters,
 } from '../utils/filterClientesAdministrativos';
 import { computeClienteAdministrativoStats } from '../utils/clienteAdministrativoStats';
+import { downloadClientesAdministrativosPdf } from '../utils/exportClientesAdministrativosPdf';
+import { downloadClientesAdministrativosExcel } from '../utils/exportClientesAdministrativosExcel';
 import {
   findClienteDuplicado,
   getClienteDuplicadoMensagem,
@@ -120,6 +122,30 @@ export default function ObraAdministrativoPage() {
       console.error('Erro ao editar cliente:', err);
       alert('Erro ao salvar cliente');
     }
+  };
+
+  const handleExportPdf = () => {
+    if (!obra) return;
+    downloadClientesAdministrativosPdf({
+      clientes: filtered,
+      title: obra.nome,
+      subtitle: 'Todos os setores da obra',
+      showPlantaColumn: true,
+      filteredCount: filtered.length,
+      totalCount: allClientes.length,
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (!obra) return;
+    downloadClientesAdministrativosExcel({
+      clientes: filtered,
+      title: obra.nome,
+      subtitle: 'Todos os setores da obra',
+      showPlantaColumn: true,
+      filteredCount: filtered.length,
+      totalCount: allClientes.length,
+    });
   };
 
   if (!obraId || !obra) {
@@ -266,6 +292,8 @@ export default function ObraAdministrativoPage() {
               onChange={setListFilters}
               totalCount={allClientes.length}
               filteredCount={filtered.length}
+              onExportPdf={handleExportPdf}
+              onExportExcel={handleExportExcel}
             />
             {loadingList ? (
               <div className="py-12 text-center text-gray-500">Carregando clientes...</div>

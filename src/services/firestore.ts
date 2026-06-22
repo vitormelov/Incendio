@@ -431,7 +431,11 @@ const mapClienteAdministrativoDoc = (id: string, data: Record<string, unknown>):
     corredor: String(data.corredor ?? ''),
     box: String(data.box ?? ''),
     nomeCliente: String(data.nomeCliente ?? ''),
-    status: data.status === 'fechado' ? 'fechado' : 'aberto',
+    status: (() => {
+      const nome = String(data.nomeCliente ?? '').trim();
+      if (!nome) return 'disponivel' as const;
+      return data.status === 'fechado' ? ('fechado' as const) : ('aberto' as const);
+    })(),
     inadimplencia: Boolean(data.inadimplencia),
     processoJudicial: Boolean(data.processoJudicial),
     criadoPor: data.criadoPor ? String(data.criadoPor) : undefined,

@@ -29,8 +29,8 @@ function pct(count: number, total: number): number {
 function computeMetricas(clientes: ClienteAdministrativo[]): ClienteAdministrativoMetricas {
   const totalBoxes = clientes.length;
   const disponiveis = clientes.filter(isClienteAdministrativoDisponivel).length;
-  const abertos = clientes.filter((c) => c.status === 'aberto').length;
-  const fechados = clientes.filter((c) => c.status === 'fechado').length;
+  const abertos = clientes.filter((c) => !isClienteAdministrativoDisponivel(c) && c.status === 'aberto').length;
+  const fechados = clientes.filter((c) => !isClienteAdministrativoDisponivel(c) && c.status === 'fechado').length;
   const inadimplentes = clientes.filter((c) => c.inadimplencia).length;
   const processoJudicial = clientes.filter((c) => c.processoJudicial).length;
 

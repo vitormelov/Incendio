@@ -12,6 +12,8 @@ import {
   type ClienteAdminListFilters,
 } from '../utils/filterClientesAdministrativos';
 import { getSetorAdministrativoById } from '../config/setoresAdministrativo';
+import { downloadClientesAdministrativosPdf } from '../utils/exportClientesAdministrativosPdf';
+import { downloadClientesAdministrativosExcel } from '../utils/exportClientesAdministrativosExcel';
 import {
   findClienteDuplicado,
   getClienteDuplicadoMensagem,
@@ -168,6 +170,26 @@ export default function SetorAdministrativoPage() {
     }
   };
 
+  const handleExportPdf = () => {
+    if (!setor) return;
+    downloadClientesAdministrativosPdf({
+      clientes: clientesFiltrados,
+      title: setor.nome,
+      filteredCount: clientesFiltrados.length,
+      totalCount: clientes.length,
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (!setor) return;
+    downloadClientesAdministrativosExcel({
+      clientes: clientesFiltrados,
+      title: setor.nome,
+      filteredCount: clientesFiltrados.length,
+      totalCount: clientes.length,
+    });
+  };
+
   if (!setor || !obraId) {
     return (
       <div className="p-8 text-center">
@@ -227,6 +249,8 @@ export default function SetorAdministrativoPage() {
               onChange={setListFilters}
               totalCount={clientes.length}
               filteredCount={clientesFiltrados.length}
+              onExportPdf={handleExportPdf}
+              onExportExcel={handleExportExcel}
             />
             <ClienteAdministrativoList
               clientes={clientesFiltrados}

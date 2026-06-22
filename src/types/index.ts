@@ -1,4 +1,4 @@
-export type ClienteAdministrativoStatus = 'aberto' | 'fechado';
+export type ClienteAdministrativoStatus = 'aberto' | 'fechado' | 'disponivel';
 
 export interface ClienteAdministrativo {
   id: string;
