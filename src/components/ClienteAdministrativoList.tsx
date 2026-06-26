@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
 import { Eye, Pencil, Trash2, X } from 'lucide-react';
 import type { ClienteAdministrativo, ClienteAdministrativoStatus } from '../types';
 import {
@@ -20,6 +22,13 @@ interface ClienteAdministrativoListProps {
   showActions?: boolean;
   showPlantaColumn?: boolean;
   emptyMessage?: string;
+}
+
+function formatClienteDateTime(iso: string) {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 }
 
 function ObservacaoModal({
@@ -54,11 +63,21 @@ function ObservacaoModal({
           </p>
           <p className="text-sm text-gray-800 whitespace-pre-wrap">{texto}</p>
         </div>
-        <div className="flex justify-end border-t px-4 py-3">
+        <div className="flex items-center justify-between gap-4 border-t px-4 py-3">
+          <div className="text-xs text-gray-500 space-y-1 min-w-0">
+            <p>
+              <span className="font-medium text-gray-600">Criado em:</span>{' '}
+              {formatClienteDateTime(cliente.createdAt)}
+            </p>
+            <p>
+              <span className="font-medium text-gray-600">Última atualização:</span>{' '}
+              {formatClienteDateTime(cliente.updatedAt)}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="shrink-0 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             Fechar
           </button>

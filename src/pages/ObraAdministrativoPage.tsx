@@ -104,10 +104,14 @@ export default function ObraAdministrativoPage() {
     cliente: ClienteAdministrativo,
     status: ClienteAdministrativo['status']
   ) => {
+    const previous = allClientes;
+    setAllClientes((prev) =>
+      prev.map((c) => (c.id === cliente.id ? { ...c, status } : c))
+    );
     try {
       await updateClienteAdministrativo(cliente.id, { status });
-      await loadAll();
     } catch (err) {
+      setAllClientes(previous);
       console.error('Erro ao atualizar status:', err);
       alert('Erro ao atualizar status');
     }
