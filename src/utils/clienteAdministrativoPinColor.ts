@@ -72,6 +72,23 @@ export function getClienteAdministrativoPinColor(cliente: ClienteAdministrativo)
   return CLIENTE_ADMIN_PIN_COLORS.aberto;
 }
 
+export function getNextClienteAdministrativoStatus(
+  status: Exclude<ClienteAdministrativoStatus, 'disponivel'>
+): Exclude<ClienteAdministrativoStatus, 'disponivel'> {
+  if (status === 'aberto') return 'fechado';
+  if (status === 'fechado') return 'em_reforma';
+  return 'aberto';
+}
+
+export function cycleClienteAdministrativoStatus(
+  cliente: ClienteAdministrativo
+): Exclude<ClienteAdministrativoStatus, 'disponivel'> | null {
+  if (isClienteAdministrativoDisponivel(cliente)) return null;
+  const status = cliente.status;
+  if (status === 'disponivel') return null;
+  return getNextClienteAdministrativoStatus(status);
+}
+
 export function getClienteAdministrativoPinLabel(cliente: ClienteAdministrativo): string {
   const nome = (cliente.nomeCliente || '').trim();
   if (!nome) return '?';

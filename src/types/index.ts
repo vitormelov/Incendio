@@ -12,6 +12,7 @@ export interface ClienteAdministrativo {
   status: ClienteAdministrativoStatus;
   inadimplencia: boolean;
   processoJudicial: boolean;
+  observacao: string;
   criadoPor?: string;
   coordenadas: {
     x: number;

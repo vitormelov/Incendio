@@ -32,6 +32,7 @@ const emptyForm = () => ({
   status: 'disponivel' as ClienteAdministrativoStatus,
   inadimplencia: false,
   processoJudicial: false,
+  observacao: '',
 });
 
 export default function ClienteAdministrativoForm({
@@ -58,6 +59,7 @@ export default function ClienteAdministrativoForm({
         status: normalizeClienteAdministrativoFields(cliente).status,
         inadimplencia: cliente.inadimplencia,
         processoJudicial: cliente.processoJudicial,
+        observacao: cliente.observacao ?? '',
       });
     } else {
       setFormData({
@@ -121,6 +123,7 @@ export default function ClienteAdministrativoForm({
       status: formData.status,
       inadimplencia: formData.inadimplencia,
       processoJudicial: formData.processoJudicial,
+      observacao: formData.observacao.trim(),
       criadoPor: cliente?.criadoPor,
       coordenadas: coords,
     });
@@ -312,6 +315,18 @@ export default function ClienteAdministrativoForm({
                 Sim
               </label>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Observação</label>
+            <textarea
+              value={formData.observacao}
+              onChange={(e) => setFormData((p) => ({ ...p, observacao: e.target.value }))}
+              disabled={readOnly}
+              rows={3}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50 resize-y min-h-[4.5rem]"
+              placeholder="Anotações livres sobre o box ou cliente"
+            />
           </div>
 
           <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-600">

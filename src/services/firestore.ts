@@ -440,6 +440,7 @@ const mapClienteAdministrativoDoc = (id: string, data: Record<string, unknown>):
     })(),
     inadimplencia: Boolean(data.inadimplencia),
     processoJudicial: Boolean(data.processoJudicial),
+    observacao: String(data.observacao ?? ''),
     criadoPor: data.criadoPor ? String(data.criadoPor) : undefined,
     coordenadas: {
       x: Number((data.coordenadas as { x?: number })?.x ?? 0),

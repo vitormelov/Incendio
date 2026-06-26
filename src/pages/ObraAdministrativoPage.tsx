@@ -100,6 +100,19 @@ export default function ObraAdministrativoPage() {
     }
   };
 
+  const handleStatusChange = async (
+    cliente: ClienteAdministrativo,
+    status: ClienteAdministrativo['status']
+  ) => {
+    try {
+      await updateClienteAdministrativo(cliente.id, { status });
+      await loadAll();
+    } catch (err) {
+      console.error('Erro ao atualizar status:', err);
+      alert('Erro ao atualizar status');
+    }
+  };
+
   const handleSaveEdit = async (data: Omit<ClienteAdministrativo, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!selectedCliente) return;
     const duplicado = findClienteDuplicado(
@@ -301,6 +314,7 @@ export default function ObraAdministrativoPage() {
                   setShowForm(true);
                 }}
                 onDelete={canManage ? handleDelete : undefined}
+                onStatusChange={canManage ? handleStatusChange : undefined}
                 showActions={canManage}
                 showPlantaColumn={false}
                 emptyMessage={

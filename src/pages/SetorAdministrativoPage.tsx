@@ -170,6 +170,19 @@ export default function SetorAdministrativoPage() {
     }
   };
 
+  const handleStatusChange = async (
+    cliente: ClienteAdministrativo,
+    status: ClienteAdministrativo['status']
+  ) => {
+    try {
+      await updateClienteAdministrativo(cliente.id, { status });
+      await loadClientes();
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      alert('Erro ao atualizar status');
+    }
+  };
+
   const handleExportPdf = () => {
     if (!setor) return;
     downloadClientesAdministrativosPdf({
@@ -261,6 +274,7 @@ export default function SetorAdministrativoPage() {
                 setShowForm(true);
               }}
               onDelete={canManage ? handleDelete : undefined}
+              onStatusChange={canManage ? handleStatusChange : undefined}
               showActions={canManage}
               showPlantaColumn={false}
               emptyMessage={
