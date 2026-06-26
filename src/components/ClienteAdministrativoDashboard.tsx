@@ -43,17 +43,18 @@ function SetorCard({ stats }: { stats: ClienteAdministrativoSetorStats }) {
         <MetricBar label="Disponíveis" count={stats.disponiveis} pct={stats.disponiveisPct} color="#3B82F6" />
         <MetricBar label="Abertos" count={stats.abertos} pct={stats.abertosPct} color="#22C55E" />
         <MetricBar label="Fechados" count={stats.fechados} pct={stats.fechadosPct} color="#EF4444" />
+        <MetricBar label="Em reforma" count={stats.emReforma} pct={stats.emReformaPct} color="#FFBF00" />
         <MetricBar
           label="Inadimplentes"
           count={stats.inadimplentes}
           pct={stats.inadimplentesPct}
-          color="#FF6D00"
+          color="#64748B"
         />
         <MetricBar
           label="Processo judicial"
           count={stats.processoJudicial}
           pct={stats.processoJudicialPct}
-          color="#FFBF00"
+          color="#94A3B8"
         />
       </div>
     </div>
@@ -76,7 +77,7 @@ export default function ClienteAdministrativoDashboard({
         <p className="text-4xl font-bold text-violet-900">{geral.totalBoxes}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase text-gray-500 mb-2">Disponíveis</p>
           <p className="text-2xl font-bold text-blue-600">{geral.disponiveis}</p>
@@ -93,17 +94,20 @@ export default function ClienteAdministrativoDashboard({
           <p className="text-sm text-gray-600">{geral.fechadosPct}% do total</p>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium uppercase text-gray-500 mb-2">Inadimplência</p>
-          <p className="text-2xl font-bold" style={{ color: '#FF6D00' }}>
-            {geral.inadimplentes}
+          <p className="text-xs font-medium uppercase text-gray-500 mb-2">Status — em reforma</p>
+          <p className="text-2xl font-bold" style={{ color: '#FFBF00' }}>
+            {geral.emReforma}
           </p>
+          <p className="text-sm text-gray-600">{geral.emReformaPct}% do total</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium uppercase text-gray-500 mb-2">Inadimplência</p>
+          <p className="text-2xl font-bold text-slate-600">{geral.inadimplentes}</p>
           <p className="text-sm text-gray-600">{geral.inadimplentesPct}% do total</p>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase text-gray-500 mb-2">Processo judicial</p>
-          <p className="text-2xl font-bold" style={{ color: '#FFBF00' }}>
-            {geral.processoJudicial}
-          </p>
+          <p className="text-2xl font-bold text-slate-500">{geral.processoJudicial}</p>
           <p className="text-sm text-gray-600">{geral.processoJudicialPct}% do total</p>
         </div>
       </div>

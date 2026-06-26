@@ -28,7 +28,11 @@ export function filterClientesAdministrativos(
     if (filters.setorLocal && c.setorLocal !== filters.setorLocal) return false;
     if (filters.status === 'disponivel') {
       if (!isClienteAdministrativoDisponivel(c)) return false;
-    } else if (filters.status === 'aberto' || filters.status === 'fechado') {
+    } else if (
+      filters.status === 'aberto' ||
+      filters.status === 'fechado' ||
+      filters.status === 'em_reforma'
+    ) {
       if (isClienteAdministrativoDisponivel(c) || c.status !== filters.status) return false;
     }
     if (filters.inadimplencia === 'sim' && !c.inadimplencia) return false;

@@ -103,6 +103,7 @@ export default function ClienteAdministrativoFilters({
             <option value="disponivel">Disponível</option>
             <option value="aberto">Aberto</option>
             <option value="fechado">Fechado</option>
+            <option value="em_reforma">Em reforma</option>
           </select>
         </div>
 

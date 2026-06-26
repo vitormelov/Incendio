@@ -434,7 +434,9 @@ const mapClienteAdministrativoDoc = (id: string, data: Record<string, unknown>):
     status: (() => {
       const nome = String(data.nomeCliente ?? '').trim();
       if (!nome) return 'disponivel' as const;
-      return data.status === 'fechado' ? ('fechado' as const) : ('aberto' as const);
+      if (data.status === 'fechado') return 'fechado' as const;
+      if (data.status === 'em_reforma') return 'em_reforma' as const;
+      return 'aberto' as const;
     })(),
     inadimplencia: Boolean(data.inadimplencia),
     processoJudicial: Boolean(data.processoJudicial),

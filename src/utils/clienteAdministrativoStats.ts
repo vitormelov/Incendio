@@ -8,8 +8,10 @@ export interface ClienteAdministrativoMetricas {
   disponiveisPct: number;
   abertos: number;
   fechados: number;
+  emReforma: number;
   abertosPct: number;
   fechadosPct: number;
+  emReformaPct: number;
   inadimplentes: number;
   inadimplentesPct: number;
   processoJudicial: number;
@@ -31,6 +33,7 @@ function computeMetricas(clientes: ClienteAdministrativo[]): ClienteAdministrati
   const disponiveis = clientes.filter(isClienteAdministrativoDisponivel).length;
   const abertos = clientes.filter((c) => !isClienteAdministrativoDisponivel(c) && c.status === 'aberto').length;
   const fechados = clientes.filter((c) => !isClienteAdministrativoDisponivel(c) && c.status === 'fechado').length;
+  const emReforma = clientes.filter((c) => !isClienteAdministrativoDisponivel(c) && c.status === 'em_reforma').length;
   const inadimplentes = clientes.filter((c) => c.inadimplencia).length;
   const processoJudicial = clientes.filter((c) => c.processoJudicial).length;
 
@@ -40,8 +43,10 @@ function computeMetricas(clientes: ClienteAdministrativo[]): ClienteAdministrati
     disponiveisPct: pct(disponiveis, totalBoxes),
     abertos,
     fechados,
+    emReforma,
     abertosPct: pct(abertos, totalBoxes),
     fechadosPct: pct(fechados, totalBoxes),
+    emReformaPct: pct(emReforma, totalBoxes),
     inadimplentes,
     inadimplentesPct: pct(inadimplentes, totalBoxes),
     processoJudicial,

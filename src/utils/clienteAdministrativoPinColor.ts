@@ -1,8 +1,22 @@
-import type { ClienteAdministrativo } from '../types';
+import type { ClienteAdministrativo, ClienteAdministrativoStatus } from '../types';
 
-/** Cores dos pinos (prioridade: disponível → processo judicial → inadimplência → fechado → verde). */
+export const CLIENTE_ADMIN_PIN_COLORS = {
+  disponivel: '#3B82F6',
+  aberto: '#22C55E',
+  fechado: '#EF4444',
+  em_reforma: '#FFBF00',
+} as const;
+
 export function isClienteAdministrativoDisponivel(cliente: ClienteAdministrativo): boolean {
   return cliente.status === 'disponivel' || !(cliente.nomeCliente || '').trim();
+}
+
+function normalizeStatusWithClient(
+  status: ClienteAdministrativoStatus
+): Exclude<ClienteAdministrativoStatus, 'disponivel'> {
+  if (status === 'fechado') return 'fechado';
+  if (status === 'em_reforma') return 'em_reforma';
+  return 'aberto';
 }
 
 export function normalizeClienteAdministrativoFields<
@@ -15,7 +29,7 @@ export function normalizeClienteAdministrativoFields<
   if (data.status === 'disponivel') {
     return { ...data, nomeCliente, status: 'aberto' };
   }
-  return { ...data, nomeCliente, status: data.status === 'fechado' ? 'fechado' : 'aberto' };
+  return { ...data, nomeCliente, status: normalizeStatusWithClient(data.status) };
 }
 
 export function normalizeClienteAdministrativoPartial(
@@ -27,22 +41,37 @@ export function normalizeClienteAdministrativoPartial(
   if (cliente.nomeCliente?.trim() && cliente.status === 'disponivel') {
     return { ...cliente, status: 'aberto' };
   }
+  if (cliente.nomeCliente?.trim() && cliente.status) {
+    return { ...cliente, status: normalizeStatusWithClient(cliente.status) };
+  }
   return cliente;
 }
 
 export function getClienteAdministrativoStatusLabel(cliente: ClienteAdministrativo): string {
   if (isClienteAdministrativoDisponivel(cliente)) return 'Disponível';
   if (cliente.status === 'fechado') return 'Fechado';
+  if (cliente.status === 'em_reforma') return 'Em reforma';
   return 'Aberto';
 }
 
-export function getClienteAdministrativoPinColor(cliente: ClienteAdministrativo): string {
-  if (isClienteAdministrativoDisponivel(cliente)) return '#3B82F6'; // azul — disponível
-  if (cliente.processoJudicial) return '#FFBF00'; // amarelo forte — prevalece sobre inadimplência
-  if (cliente.inadimplencia) return '#FF6D00'; // laranja forte
-  if (cliente.status === 'fechado') return '#EF4444'; // vermelho
-  return '#22C55E'; // verde — aberto, sem pendências
+export function getClienteAdministrativoStatusOptions(): {
+  value: Exclude<ClienteAdministrativoStatus, 'disponivel'>;
+  label: string;
+}[] {
+  return [
+    { value: 'aberto', label: 'Aberto' },
+    { value: 'fechado', label: 'Fechado' },
+    { value: 'em_reforma', label: 'Em reforma' },
+  ];
 }
+
+export function getClienteAdministrativoPinColor(cliente: ClienteAdministrativo): string {
+  if (isClienteAdministrativoDisponivel(cliente)) return CLIENTE_ADMIN_PIN_COLORS.disponivel;
+  if (cliente.status === 'em_reforma') return CLIENTE_ADMIN_PIN_COLORS.em_reforma;
+  if (cliente.status === 'fechado') return CLIENTE_ADMIN_PIN_COLORS.fechado;
+  return CLIENTE_ADMIN_PIN_COLORS.aberto;
+}
+
 export function getClienteAdministrativoPinLabel(cliente: ClienteAdministrativo): string {
   const nome = (cliente.nomeCliente || '').trim();
   if (!nome) return '?';

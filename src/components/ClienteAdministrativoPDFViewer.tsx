@@ -311,6 +311,10 @@ export default function ClienteAdministrativoPDFViewer({
                               <p className="text-gray-300">
                                 Box {box} · Corredor {corredor}
                               </p>
+                              <p className="text-gray-300">Inadimplência: {cliente.inadimplencia ? 'Sim' : 'Não'}</p>
+                              <p className="text-gray-300">
+                                Processo judicial: {cliente.processoJudicial ? 'Sim' : 'Não'}
+                              </p>
                             </div>
                           </div>
                         )}

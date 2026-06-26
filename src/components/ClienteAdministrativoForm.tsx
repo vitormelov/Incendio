@@ -6,7 +6,7 @@ import {
   getSetorLocalPadraoParaPlanta,
   type SetorLocalOpcao,
 } from '../config/clienteAdministrativoSetores';
-import { getClienteAdministrativoPinColor, normalizeClienteAdministrativoFields } from '../utils/clienteAdministrativoPinColor';
+import { getClienteAdministrativoPinColor, getClienteAdministrativoStatusOptions, normalizeClienteAdministrativoFields } from '../utils/clienteAdministrativoPinColor';
 import {
   findClienteDuplicado,
   getClienteDuplicadoMensagem,
@@ -248,18 +248,18 @@ export default function ClienteAdministrativoForm({
             {isDisponivel ? (
               <p className="text-sm text-gray-700">Disponível</p>
             ) : (
-              <div className="flex gap-4">
-                {(['aberto', 'fechado'] as const).map((s) => (
-                  <label key={s} className="inline-flex items-center gap-2 text-sm text-gray-800">
+              <div className="flex flex-wrap gap-4">
+                {getClienteAdministrativoStatusOptions().map(({ value, label }) => (
+                  <label key={value} className="inline-flex items-center gap-2 text-sm text-gray-800">
                     <input
                       type="radio"
                       name="status"
-                      checked={formData.status === s}
-                      onChange={() => setFormData((p) => ({ ...p, status: s }))}
+                      checked={formData.status === value}
+                      onChange={() => setFormData((p) => ({ ...p, status: value }))}
                       disabled={readOnly}
                       className="text-violet-600"
                     />
-                    {s === 'aberto' ? 'Aberto' : 'Fechado'}
+                    {label}
                   </label>
                 ))}
               </div>
@@ -321,11 +321,7 @@ export default function ClienteAdministrativoForm({
             </span>
             {' • '}
             <span className="inline-flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: '#FFBF00' }} /> processo judicial
-            </span>
-            {' • '}
-            <span className="inline-flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: '#FF6D00' }} /> inadimplência
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> aberto
             </span>
             {' • '}
             <span className="inline-flex items-center gap-1">
@@ -333,7 +329,7 @@ export default function ClienteAdministrativoForm({
             </span>
             {' • '}
             <span className="inline-flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> aberto
+              <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: '#FFBF00' }} /> em reforma
             </span>
           </div>
 

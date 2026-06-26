@@ -251,11 +251,7 @@ export default function ObraAdministrativoPage() {
               </span>
               {' • '}
               <span className="inline-flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#FFBF00' }} /> processo judicial (prevalece)
-              </span>
-              {' • '}
-              <span className="inline-flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#FF6D00' }} /> inadimplência
+                <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> aberto
               </span>
               {' • '}
               <span className="inline-flex items-center gap-1">
@@ -263,7 +259,7 @@ export default function ObraAdministrativoPage() {
               </span>
               {' • '}
               <span className="inline-flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> aberto sem pendências
+                <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#FFBF00' }} /> em reforma
               </span>
             </div>
           </>
