@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { format } from 'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
 import { ArrowLeft, ClipboardList, Copy, Eye, FileDown, List, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { getObraById } from '../config/setores';
-import { canManageObraData } from '../services/auth';
-import { deleteObraRDO, getObraRDOByDate, getPreviousObraRDOs, upsertObraRDO } from '../services/firestore';
+import { canManageObraData, getCurrentUser } from '../services/auth';
+import {
+  deleteObraRDO,
+  getObraRDOByDate,
+  getPreviousObraRDOs,
+  getUserName,
+  getUserNameByEmail,
+  upsertObraRDO,
+} from '../services/firestore';
 import {
   ObraRDO,
   RDOAtividade,
@@ -53,6 +62,21 @@ const formatDataBR = (iso: string) => {
   if (!m) return iso;
   return `${m[3]}/${m[2]}/${m[1]}`;
 };
+
+const formatRdoDateTime = (iso: string) => {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+};
+
+type RdoMeta = Pick<ObraRDO, 'createdAt' | 'updatedAt' | 'criadoPor'>;
+
+const rdoMetaFromRecord = (rdo: ObraRDO): RdoMeta => ({
+  createdAt: rdo.createdAt,
+  updatedAt: rdo.updatedAt,
+  criadoPor: rdo.criadoPor,
+});
 
 const draftFromExistingRdo = (
   source: ObraRDO,
@@ -119,6 +143,8 @@ export default function ObraRDOPage() {
     () => newDraft(obraId || '', todayLocalISO())
   );
   const [existingId, setExistingId] = useState<string | null>(null);
+  const [rdoMeta, setRdoMeta] = useState<RdoMeta | null>(null);
+  const [criadorNome, setCriadorNome] = useState('');
   const [previousRdos, setPreviousRdos] = useState<ObraRDO[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -138,11 +164,13 @@ export default function ObraRDOPage() {
       const rdo = await getObraRDOByDate(obraId, targetDate);
       if (!rdo) {
         setExistingId(null);
+        setRdoMeta(null);
         setDraft(newDraft(obraId, targetDate));
         const prev = await getPreviousObraRDOs(obraId, targetDate, 5);
         setPreviousRdos(prev);
       } else {
         setExistingId(rdo.id);
+        setRdoMeta(rdoMetaFromRecord(rdo));
         setPreviousRdos([]);
         setDraft({
           obraId: rdo.obraId,
@@ -177,6 +205,25 @@ export default function ObraRDOPage() {
     };
     void run();
   }, [obraId]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!rdoMeta?.criadoPor) {
+        setCriadorNome('');
+        return;
+      }
+
+      if (rdoMeta.criadoPor.includes('@')) {
+        setCriadorNome(getUserNameByEmail(rdoMeta.criadoPor));
+        return;
+      }
+
+      const nome = await getUserName(rdoMeta.criadoPor);
+      setCriadorNome(nome || 'Usuário');
+    };
+
+    void run();
+  }, [rdoMeta?.criadoPor]);
 
   useEffect(() => {
     if (!obraId) return;
@@ -303,6 +350,7 @@ export default function ObraRDOPage() {
     setError('');
     setSuccess('');
     try {
+      const user = getCurrentUser();
       const id = await upsertObraRDO(obraId, date, {
         clima: draft.clima,
         condicao: draft.condicao,
@@ -310,8 +358,13 @@ export default function ObraRDOPage() {
         efetivo: draft.efetivo,
         equipamentos: draft.equipamentos,
         observacoes: draft.observacoes,
+        ...(!existingId && user?.uid ? { criadoPor: user.uid } : {}),
       });
       setExistingId(id);
+      const saved = await getObraRDOByDate(obraId, date);
+      if (saved) {
+        setRdoMeta(rdoMetaFromRecord(saved));
+      }
       setSuccess('RDO salvo com sucesso.');
     } catch (err) {
       console.error('Erro ao salvar RDO:', err);
@@ -377,6 +430,7 @@ export default function ObraRDOPage() {
     try {
       await deleteObraRDO(obraId, date);
       setExistingId(null);
+      setRdoMeta(null);
       setDraft(newDraft(obraId, date));
       const prev = await getPreviousObraRDOs(obraId, date, 5);
       setPreviousRdos(prev);
@@ -918,6 +972,22 @@ export default function ObraRDOPage() {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
                 placeholder="Escreva aqui qualquer informação adicional..."
               />
+              {rdoMeta && (
+                <div className="mt-3 text-xs text-gray-500 space-y-1">
+                  <p>
+                    <span className="font-medium text-gray-600">Criado em:</span>{' '}
+                    {formatRdoDateTime(rdoMeta.createdAt)}
+                  </p>
+                  <p>
+                    <span className="font-medium text-gray-600">Última atualização:</span>{' '}
+                    {formatRdoDateTime(rdoMeta.updatedAt)}
+                  </p>
+                  <p>
+                    <span className="font-medium text-gray-600">Criado por:</span>{' '}
+                    {criadorNome || '—'}
+                  </p>
+                </div>
+              )}
             </section>
           </div>
         )}

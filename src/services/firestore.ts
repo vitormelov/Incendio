@@ -758,6 +758,7 @@ export const getObraRDOs = async (obraId: string): Promise<ObraRDO[]> => {
       efetivo: Array.isArray(data.efetivo) ? (data.efetivo as ObraRDO['efetivo']) : [],
       equipamentos: Array.isArray(data.equipamentos) ? (data.equipamentos as ObraRDO['equipamentos']) : [],
       observacoes: String(data.observacoes ?? ''),
+      criadoPor: data.criadoPor ? String(data.criadoPor) : undefined,
       createdAt: data.createdAt?.toDate?.().toISOString() || String(data.createdAt ?? ''),
       updatedAt: data.updatedAt?.toDate?.().toISOString() || String(data.updatedAt ?? ''),
     } as ObraRDO;
@@ -801,6 +802,7 @@ export const getObraRDOByDate = async (obraId: string, data: string): Promise<Ob
     efetivo: Array.isArray(d.efetivo) ? (d.efetivo as ObraRDO['efetivo']) : [],
     equipamentos: Array.isArray(d.equipamentos) ? (d.equipamentos as ObraRDO['equipamentos']) : [],
     observacoes: String(d.observacoes ?? ''),
+    criadoPor: d.criadoPor ? String(d.criadoPor) : undefined,
     createdAt: d.createdAt?.toDate?.().toISOString() || String(d.createdAt ?? ''),
     updatedAt: d.updatedAt?.toDate?.().toISOString() || String(d.updatedAt ?? ''),
   } as ObraRDO;
@@ -809,18 +811,21 @@ export const getObraRDOByDate = async (obraId: string, data: string): Promise<Ob
 export const upsertObraRDO = async (
   obraId: string,
   data: string,
-  payload: Omit<ObraRDO, 'id' | 'obraId' | 'data' | 'createdAt' | 'updatedAt'> & Partial<Pick<ObraRDO, 'clima' | 'condicao' | 'atividades' | 'efetivo' | 'equipamentos' | 'observacoes'>>
+  payload: Omit<ObraRDO, 'id' | 'obraId' | 'data' | 'createdAt' | 'updatedAt'> &
+    Partial<Pick<ObraRDO, 'clima' | 'condicao' | 'atividades' | 'efetivo' | 'equipamentos' | 'observacoes' | 'criadoPor'>>
 ): Promise<string> => {
   const id = buildRDODocId(obraId, data);
   const ref = doc(db, OBRA_RDOS_COLLECTION, id);
   const existing = await getDoc(ref);
+  const { criadoPor, ...rest } = payload;
 
   if (!existing.exists()) {
     await setDoc(ref, {
       ...defaultRDO(obraId, data),
-      ...payload,
+      ...rest,
       obraId,
       data,
+      ...(criadoPor ? { criadoPor } : {}),
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -828,7 +833,7 @@ export const upsertObraRDO = async (
   }
 
   await updateDoc(ref, {
-    ...payload,
+    ...rest,
     updatedAt: Timestamp.now(),
   });
   return id;

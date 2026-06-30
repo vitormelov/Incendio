@@ -172,6 +172,7 @@ export interface ObraRDO {
   efetivo: RDOEfetivo[];
   equipamentos: RDOEquipamento[];
   observacoes: string;
+  criadoPor?: string;
   createdAt: string;
   updatedAt: string;
 }
