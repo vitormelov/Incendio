@@ -767,13 +767,22 @@ export const getObraRDOs = async (obraId: string): Promise<ObraRDO[]> => {
   return results;
 };
 
-/** RDO mais recente com data estritamente anterior a `beforeDate` (YYYY-MM-DD). */
-export const getPreviousObraRDO = async (obraId: string, beforeDate: string): Promise<ObraRDO | null> => {
+/** Últimos RDOs com data estritamente anterior a `beforeDate` (YYYY-MM-DD), mais recentes primeiro. */
+export const getPreviousObraRDOs = async (
+  obraId: string,
+  beforeDate: string,
+  limit = 5
+): Promise<ObraRDO[]> => {
   const list = await getObraRDOs(obraId);
   const candidates = list.filter((r) => r.data < beforeDate);
-  if (candidates.length === 0) return null;
   candidates.sort((a, b) => b.data.localeCompare(a.data));
-  return candidates[0];
+  return candidates.slice(0, limit);
+};
+
+/** RDO mais recente com data estritamente anterior a `beforeDate` (YYYY-MM-DD). */
+export const getPreviousObraRDO = async (obraId: string, beforeDate: string): Promise<ObraRDO | null> => {
+  const list = await getPreviousObraRDOs(obraId, beforeDate, 1);
+  return list[0] ?? null;
 };
 
 export const getObraRDOByDate = async (obraId: string, data: string): Promise<ObraRDO | null> => {

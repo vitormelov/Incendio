@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, UserCog } from 'lucide-react';
+import { ArrowLeft, Trash2, UserCog, X } from 'lucide-react';
 import { ALL_OBRA_MODULO_IDS, OBRA_NAV_ITEMS } from '../config/obraModulos';
 import type { ObraModuloId } from '../config/obraModulos';
 import { obras } from '../config/setores';
@@ -13,7 +13,6 @@ const ALL_PERMISSIONS: { label: string; value: UserPermission }[] = [
 
 const allObraIds = () => obras.map((o) => o.id);
 
-/** IDs marcados na UI. `null` só para colaborador = “todas as obras” no Firestore; leitores nunca ficam com `null`. */
 const effectiveSelectedObraIds = (c: Collaborator): string[] => {
   if (c.obraIdsPermitidos === null) {
     return c.permissions.includes('colaborador') ? allObraIds() : [];
@@ -48,11 +47,255 @@ const toggleObraAccess = (c: Collaborator, obraId: string, checked: boolean): Co
   return { ...c, obraIdsPermitidos: useNullForAll ? null : next };
 };
 
+interface CollaboratorEditModalProps {
+  collaborator: Collaborator;
+  saving: boolean;
+  deleting: boolean;
+  onClose: () => void;
+  onChange: (collaborator: Collaborator) => void;
+  onSave: () => void;
+  onDelete: () => void;
+}
+
+function CollaboratorEditModal({
+  collaborator,
+  saving,
+  deleting,
+  onClose,
+  onChange,
+  onSave,
+  onDelete,
+}: CollaboratorEditModalProps) {
+  const disabled = saving || deleting;
+
+  const handlePermissionChange = (permission: UserPermission, checked: boolean) => {
+    const permissions = checked
+      ? Array.from(new Set([...collaborator.permissions, permission]))
+      : collaborator.permissions.filter((item) => item !== permission);
+
+    let obraIdsPermitidos = collaborator.obraIdsPermitidos;
+    let obraModulosPermitidos = collaborator.obraModulosPermitidos;
+    if (!checked && permission === 'colaborador' && collaborator.obraIdsPermitidos === null) {
+      obraIdsPermitidos = allObraIds();
+    }
+    if (!checked && permission === 'colaborador' && collaborator.obraModulosPermitidos === null) {
+      obraModulosPermitidos = [...ALL_OBRA_MODULO_IDS];
+    }
+
+    onChange({
+      ...collaborator,
+      permissions,
+      obraIdsPermitidos,
+      obraModulosPermitidos,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <div className="min-w-0 pr-4">
+            <h2 className="text-lg font-semibold text-gray-900 truncate">
+              {collaborator.nome || 'Colaborador'}
+            </h2>
+            <p className="text-sm text-gray-500 truncate">{collaborator.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={disabled}
+            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            title="Fechar"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+            <input
+              type="text"
+              value={collaborator.nome}
+              onChange={(e) => onChange({ ...collaborator, nome: e.target.value })}
+              disabled={disabled}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <input
+              type="text"
+              value={collaborator.email}
+              disabled
+              className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Permissões</label>
+            <div className="flex flex-wrap gap-3 rounded-md border border-gray-300 px-3 py-2">
+              {ALL_PERMISSIONS.map((permission) => (
+                <label key={permission.value} className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={collaborator.permissions.includes(permission.value)}
+                    onChange={(e) => handlePermissionChange(permission.value, e.target.checked)}
+                    disabled={disabled}
+                    className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  {permission.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <label className="text-sm font-medium text-gray-700">Obras com acesso</label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      ...collaborator,
+                      obraIdsPermitidos: collaborator.permissions.includes('colaborador')
+                        ? null
+                        : allObraIds(),
+                    })
+                  }
+                  disabled={disabled}
+                  className="text-xs font-medium text-purple-700 hover:underline disabled:opacity-50"
+                >
+                  Marcar todas
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...collaborator, obraIdsPermitidos: [] })}
+                  disabled={disabled}
+                  className="text-xs font-medium text-gray-600 hover:underline disabled:opacity-50"
+                >
+                  Desmarcar todas
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Obras marcadas: acesso à obra (visualização). Com <strong>Colaborador</strong>, também edição nessas
+              obras.
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border border-gray-200 bg-gray-50/80 px-3 py-3">
+              {obras.map((obra) => (
+                <label
+                  key={obra.id}
+                  className="inline-flex min-w-[10rem] cursor-pointer items-center gap-2 text-sm text-gray-800"
+                >
+                  <input
+                    type="checkbox"
+                    checked={effectiveSelectedObraIds(collaborator).includes(obra.id)}
+                    onChange={(e) =>
+                      onChange(toggleObraAccess(collaborator, obra.id, e.target.checked))
+                    }
+                    disabled={disabled}
+                    className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="truncate" title={obra.nome}>
+                    {obra.nome}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <label className="text-sm font-medium text-gray-700">Opções da obra (menu)</label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...collaborator, obraModulosPermitidos: null })}
+                  disabled={disabled}
+                  className="text-xs font-medium text-purple-700 hover:underline disabled:opacity-50"
+                >
+                  Marcar todas
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...collaborator, obraModulosPermitidos: [] })}
+                  disabled={disabled}
+                  className="text-xs font-medium text-gray-600 hover:underline disabled:opacity-50"
+                >
+                  Desmarcar todas
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Defina quais seções aparecem no menu lateral para este usuário.
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border border-gray-200 bg-gray-50/80 px-3 py-3">
+              {OBRA_NAV_ITEMS.map((item) => (
+                <label
+                  key={item.modulo}
+                  className="inline-flex min-w-[9rem] cursor-pointer items-center gap-2 text-sm text-gray-800"
+                >
+                  <input
+                    type="checkbox"
+                    checked={effectiveSelectedModulos(collaborator).includes(item.modulo)}
+                    onChange={(e) =>
+                      onChange(toggleModuloAccess(collaborator, item.modulo, e.target.checked))
+                    }
+                    disabled={disabled}
+                    className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-60"
+                  />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t px-5 py-4">
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={disabled}
+            className="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            <Trash2 size={16} className="mr-2" />
+            {deleting ? 'Excluindo...' : 'Excluir'}
+          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={disabled}
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={disabled}
+              className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+            >
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminCollaboratorsPage() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [editingCollaborator, setEditingCollaborator] = useState<Collaborator | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -74,114 +317,20 @@ export default function AdminCollaboratorsPage() {
     void loadCollaborators();
   }, []);
 
-  const handleNameChange = (id: string, nome: string) => {
-    setCollaborators((current) =>
-      current.map((collaborator) => (collaborator.id === id ? { ...collaborator, nome } : collaborator))
-    );
-  };
-
-  const handlePermissionChange = (id: string, permission: UserPermission, checked: boolean) => {
-    setCollaborators((current) =>
-      current.map((collaborator) => {
-        if (collaborator.id !== id) {
-          return collaborator;
-        }
-
-        const permissions = checked
-          ? Array.from(new Set([...collaborator.permissions, permission]))
-          : collaborator.permissions.filter((item) => item !== permission);
-
-        let obraIdsPermitidos = collaborator.obraIdsPermitidos;
-        let obraModulosPermitidos = collaborator.obraModulosPermitidos;
-        if (!checked && permission === 'colaborador' && collaborator.obraIdsPermitidos === null) {
-          obraIdsPermitidos = allObraIds();
-        }
-        if (!checked && permission === 'colaborador' && collaborator.obraModulosPermitidos === null) {
-          obraModulosPermitidos = [...ALL_OBRA_MODULO_IDS];
-        }
-
-        return {
-          ...collaborator,
-          permissions,
-          obraIdsPermitidos,
-          obraModulosPermitidos,
-        };
-      })
-    );
-  };
-
-  const handleObraAccessChange = (id: string, obraId: string, checked: boolean) => {
-    setCollaborators((current) =>
-      current.map((c) => (c.id === id ? toggleObraAccess(c, obraId, checked) : c))
-    );
-  };
-
-  const handleSelectAllObras = (id: string) => {
-    setCollaborators((current) =>
-      current.map((c) =>
-        c.id === id
-          ? { ...c, obraIdsPermitidos: c.permissions.includes('colaborador') ? null : allObraIds() }
-          : c
-      )
-    );
-  };
-
-  const handleClearAllObras = (id: string) => {
-    setCollaborators((current) =>
-      current.map((c) => (c.id === id ? { ...c, obraIdsPermitidos: [] } : c))
-    );
-  };
-
-  const handleModuloAccessChange = (id: string, modulo: ObraModuloId, checked: boolean) => {
-    setCollaborators((current) =>
-      current.map((c) => (c.id === id ? toggleModuloAccess(c, modulo, checked) : c))
-    );
-  };
-
-  const handleSelectAllModulos = (id: string) => {
-    setCollaborators((current) =>
-      current.map((c) =>
-        c.id === id
-          ? { ...c, obraModulosPermitidos: null }
-          : c
-      )
-    );
-  };
-
-  const handleClearAllModulos = (id: string) => {
-    setCollaborators((current) =>
-      current.map((c) =>
-        c.id === id ? { ...c, obraModulosPermitidos: [] } : c
-      )
-    );
-  };
-
-  const handleDelete = async (collaborator: Collaborator) => {
-    const confirmed = window.confirm(
-      `Tem certeza que deseja excluir o colaborador "${collaborator.nome || collaborator.email}"? Essa ação não pode ser desfeita.`
-    );
-
-    if (!confirmed) return;
-
-    setDeletingId(collaborator.id);
+  const openEditor = (collaborator: Collaborator) => {
     setError('');
     setSuccess('');
-
-    try {
-      await deleteCollaborator(collaborator.id);
-      setSuccess(`Colaborador ${collaborator.nome || collaborator.email} excluído com sucesso.`);
-      await loadCollaborators();
-    } catch (err) {
-      console.error('Erro ao excluir colaborador:', err);
-      setError('Não foi possível excluir o colaborador.');
-    } finally {
-      setDeletingId(null);
-    }
+    setEditingCollaborator({ ...collaborator });
   };
 
-  const handleSaveAll = async () => {
-    const invalid = collaborators.find((c) => !c.nome.trim());
-    if (invalid) {
+  const closeEditor = () => {
+    if (saving || deleting) return;
+    setEditingCollaborator(null);
+  };
+
+  const handleSaveCollaborator = async () => {
+    if (!editingCollaborator) return;
+    if (!editingCollaborator.nome.trim()) {
       setError('O nome do colaborador é obrigatório.');
       setSuccess('');
       return;
@@ -192,19 +341,18 @@ export default function AdminCollaboratorsPage() {
     setSuccess('');
 
     try {
-      await Promise.all(
-        collaborators.map((collaborator) =>
-          updateCollaborator(collaborator.id, {
-            nome: collaborator.nome.trim(),
-            permissions: collaborator.permissions,
-            obraIdsPermitidos: collaborator.obraIdsPermitidos,
-            obraModulosPermitidos: collaborator.obraModulosPermitidos,
-          })
-        )
-      );
+      await updateCollaborator(editingCollaborator.id, {
+        nome: editingCollaborator.nome.trim(),
+        permissions: editingCollaborator.permissions,
+        obraIdsPermitidos: editingCollaborator.obraIdsPermitidos,
+        obraModulosPermitidos: editingCollaborator.obraModulosPermitidos,
+      });
 
-      setSuccess('Alterações salvas com sucesso.');
-      await loadCollaborators();
+      setCollaborators((current) =>
+        current.map((c) => (c.id === editingCollaborator.id ? editingCollaborator : c))
+      );
+      setSuccess(`Alterações de ${editingCollaborator.nome.trim()} salvas com sucesso.`);
+      setEditingCollaborator(null);
     } catch (err) {
       console.error('Erro ao salvar colaborador:', err);
       setError('Não foi possível salvar as alterações.');
@@ -213,8 +361,33 @@ export default function AdminCollaboratorsPage() {
     }
   };
 
+  const handleDeleteCollaborator = async () => {
+    if (!editingCollaborator) return;
+
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir o colaborador "${editingCollaborator.nome || editingCollaborator.email}"? Essa ação não pode ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await deleteCollaborator(editingCollaborator.id);
+      setCollaborators((current) => current.filter((c) => c.id !== editingCollaborator.id));
+      setSuccess(`Colaborador ${editingCollaborator.nome || editingCollaborator.email} excluído com sucesso.`);
+      setEditingCollaborator(null);
+    } catch (err) {
+      console.error('Erro ao excluir colaborador:', err);
+      setError('Não foi possível excluir o colaborador.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow-xl p-8">
         <div className="flex items-center justify-between gap-4 mb-8">
           <div>
@@ -225,30 +398,17 @@ export default function AdminCollaboratorsPage() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Colaboradores cadastrados</h1>
             <p className="text-gray-600">
-              <strong>Colaborador</strong> habilita <strong>edição</strong> e vê <strong>todas</strong> as opções do
-              menu da obra. Sem colaborador, marque <strong>obras</strong> e <strong>opções</strong> (dashboard, RDO,
-              etc.) que a conta pode abrir em modo leitura.
+              Clique em um colaborador para editar permissões, obras e opções do menu.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              to="/admin"
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft size={18} />
-              Voltar
-            </Link>
-            <button
-              type="button"
-              onClick={() => void handleSaveAll()}
-              disabled={saving || loading || !!deletingId}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-purple-600 px-4 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-            >
-              <Save size={18} />
-              {saving ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
+          <Link
+            to="/admin"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft size={18} />
+            Voltar
+          </Link>
         </div>
 
         {error && (
@@ -264,167 +424,37 @@ export default function AdminCollaboratorsPage() {
         ) : collaborators.length === 0 ? (
           <div className="py-12 text-center text-gray-500">Nenhum colaborador cadastrado.</div>
         ) : (
-          <div className="space-y-4">
+          <div className="overflow-hidden rounded-lg border border-gray-200 divide-y divide-gray-200">
             {collaborators.map((collaborator) => (
-              <div key={collaborator.id} className="rounded-lg border border-gray-200 p-5">
-                <div className="grid gap-5 md:grid-cols-[2fr_2fr_2fr_auto] md:items-end">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                    <input
-                      type="text"
-                      value={collaborator.nome}
-                      onChange={(e) => handleNameChange(collaborator.id, e.target.value)}
-                      disabled={saving || deletingId === collaborator.id}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                    <input
-                      type="text"
-                      value={collaborator.email}
-                      disabled
-                      className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Permissões</label>
-                    <div className="flex flex-wrap gap-3 rounded-md border border-gray-300 px-3 py-2">
-                      {ALL_PERMISSIONS.map((permission) => (
-                        <label key={permission.value} className="inline-flex items-center gap-2 text-sm text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={collaborator.permissions.includes(permission.value)}
-                            onChange={(e) =>
-                              handlePermissionChange(collaborator.id, permission.value, e.target.checked)
-                            }
-                            disabled={saving || deletingId === collaborator.id}
-                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          />
-                          {permission.label}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete(collaborator)}
-                      disabled={deletingId === collaborator.id || saving}
-                      className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                    >
-                      <Trash2 size={18} className="mr-2" />
-                      {deletingId === collaborator.id ? 'Excluindo...' : 'Excluir'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-5 border-t border-gray-100 pt-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <label className="text-sm font-medium text-gray-700">Obras com acesso</label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAllObras(collaborator.id)}
-                        disabled={saving || deletingId === collaborator.id}
-                        className="text-xs font-medium text-purple-700 hover:underline disabled:opacity-50"
-                      >
-                        Marcar todas
-                      </button>
-                      <span className="text-gray-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => handleClearAllObras(collaborator.id)}
-                        disabled={saving || deletingId === collaborator.id}
-                        className="text-xs font-medium text-gray-600 hover:underline disabled:opacity-50"
-                      >
-                        Desmarcar todas
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Obras marcadas: acesso à obra (visualização). Com <strong>Colaborador</strong>, também edição
-                    nessas obras. “Todas” com colaborador remove a lista no Firestore (novas obras entram
-                    automaticamente); sem colaborador, “todas” grava cada obra na lista.
-                  </p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border border-gray-200 bg-gray-50/80 px-3 py-3">
-                    {obras.map((obra) => (
-                      <label
-                        key={obra.id}
-                        className="inline-flex min-w-[10rem] cursor-pointer items-center gap-2 text-sm text-gray-800"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={effectiveSelectedObraIds(collaborator).includes(obra.id)}
-                          onChange={(e) =>
-                            handleObraAccessChange(collaborator.id, obra.id, e.target.checked)
-                          }
-                          disabled={saving || deletingId === collaborator.id}
-                          className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="truncate" title={obra.nome}>
-                          {obra.nome}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-5 border-t border-gray-100 pt-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <label className="text-sm font-medium text-gray-700">Opções da obra (menu)</label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAllModulos(collaborator.id)}
-                        disabled={saving || deletingId === collaborator.id}
-                        className="text-xs font-medium text-purple-700 hover:underline disabled:opacity-50"
-                      >
-                        Marcar todas
-                      </button>
-                      <span className="text-gray-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => handleClearAllModulos(collaborator.id)}
-                        disabled={saving || deletingId === collaborator.id}
-                        className="text-xs font-medium text-gray-600 hover:underline disabled:opacity-50"
-                      >
-                        Desmarcar todas
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Defina quais seções aparecem no menu lateral para este usuário. Mesmo com <strong>Colaborador</strong>, você pode restringir módulos
-                    (útil quando cada colaborador atua em áreas diferentes).
-                  </p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border border-gray-200 bg-gray-50/80 px-3 py-3">
-                    {OBRA_NAV_ITEMS.map((item) => (
-                      <label
-                        key={item.modulo}
-                        className="inline-flex min-w-[9rem] cursor-pointer items-center gap-2 text-sm text-gray-800"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={effectiveSelectedModulos(collaborator).includes(item.modulo)}
-                          onChange={(e) =>
-                            handleModuloAccessChange(collaborator.id, item.modulo, e.target.checked)
-                          }
-                          disabled={saving || deletingId === collaborator.id}
-                          className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-60"
-                        />
-                        <span>{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <button
+                key={collaborator.id}
+                type="button"
+                onClick={() => openEditor(collaborator)}
+                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              >
+                <span className="font-medium text-gray-900 truncate">
+                  {collaborator.nome.trim() || 'Sem nome'}
+                </span>
+                <span className="text-sm text-gray-500 truncate shrink-0 max-w-[50%]">
+                  {collaborator.email}
+                </span>
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {editingCollaborator && (
+        <CollaboratorEditModal
+          collaborator={editingCollaborator}
+          saving={saving}
+          deleting={deleting}
+          onClose={closeEditor}
+          onChange={setEditingCollaborator}
+          onSave={() => void handleSaveCollaborator()}
+          onDelete={() => void handleDeleteCollaborator()}
+        />
+      )}
     </div>
   );
 }

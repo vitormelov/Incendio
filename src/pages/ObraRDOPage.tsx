@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Copy, Eye, FileDown, List, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { canManageObraData } from '../services/auth';
-import { deleteObraRDO, getObraRDOByDate, getPreviousObraRDO, upsertObraRDO } from '../services/firestore';
+import { deleteObraRDO, getObraRDOByDate, getPreviousObraRDOs, upsertObraRDO } from '../services/firestore';
 import {
   ObraRDO,
   RDOAtividade,
@@ -119,7 +119,7 @@ export default function ObraRDOPage() {
     () => newDraft(obraId || '', todayLocalISO())
   );
   const [existingId, setExistingId] = useState<string | null>(null);
-  const [previousRdo, setPreviousRdo] = useState<ObraRDO | null>(null);
+  const [previousRdos, setPreviousRdos] = useState<ObraRDO[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -139,11 +139,11 @@ export default function ObraRDOPage() {
       if (!rdo) {
         setExistingId(null);
         setDraft(newDraft(obraId, targetDate));
-        const prev = await getPreviousObraRDO(obraId, targetDate);
-        setPreviousRdo(prev);
+        const prev = await getPreviousObraRDOs(obraId, targetDate, 5);
+        setPreviousRdos(prev);
       } else {
         setExistingId(rdo.id);
-        setPreviousRdo(null);
+        setPreviousRdos([]);
         setDraft({
           obraId: rdo.obraId,
           data: rdo.data,
@@ -321,18 +321,18 @@ export default function ObraRDOPage() {
     }
   };
 
-  const handleCopyPreviousRdo = () => {
-    if (!obraId || !previousRdo || isReadOnly || existingId) return;
+  const handleCopyFromRdo = (sourceRdo: ObraRDO) => {
+    if (!obraId || isReadOnly || existingId) return;
 
     if (draftHasUserContent(draft)) {
       const ok = window.confirm(
-        'Os campos já preenchidos serão substituídos pelos dados do RDO anterior. Deseja continuar?'
+        `Os campos já preenchidos serão substituídos pelos dados do RDO de ${formatDataBR(sourceRdo.data)}. Deseja continuar?`
       );
       if (!ok) return;
     }
 
-    setDraft(draftFromExistingRdo(previousRdo, obraId, date));
-    setSuccess(`Campos preenchidos com o RDO de ${formatDataBR(previousRdo.data)}. Revise e salve.`);
+    setDraft(draftFromExistingRdo(sourceRdo, obraId, date));
+    setSuccess(`Campos preenchidos com o RDO de ${formatDataBR(sourceRdo.data)}. Revise e salve.`);
     setError('');
   };
 
@@ -378,8 +378,8 @@ export default function ObraRDOPage() {
       await deleteObraRDO(obraId, date);
       setExistingId(null);
       setDraft(newDraft(obraId, date));
-      const prev = await getPreviousObraRDO(obraId, date);
-      setPreviousRdo(prev);
+      const prev = await getPreviousObraRDOs(obraId, date, 5);
+      setPreviousRdos(prev);
       setSuccess('RDO excluído com sucesso.');
     } catch (err) {
       console.error('Erro ao excluir RDO:', err);
@@ -497,18 +497,26 @@ export default function ObraRDOPage() {
               )}
             </div>
             <div className="mt-2 text-xs text-gray-500">{existingId ? 'RDO existente' : 'RDO ainda não salvo para esta data'}</div>
-            {!isReadOnly && !existingId && previousRdo && (
-              <button
-                type="button"
-                onClick={handleCopyPreviousRdo}
-                disabled={loading || saving || deleting}
-                className="mt-3 inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
-              >
-                <Copy size={16} className="mr-2 shrink-0" />
-                Copiar RDO anterior ({formatDataBR(previousRdo.data)})
-              </button>
+            {!isReadOnly && !existingId && previousRdos.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-gray-600 mb-2">Copiar dos últimos RDOs:</p>
+                <div className="flex flex-wrap gap-2">
+                  {previousRdos.map((rdo) => (
+                    <button
+                      key={rdo.id}
+                      type="button"
+                      onClick={() => handleCopyFromRdo(rdo)}
+                      disabled={loading || saving || deleting}
+                      className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                    >
+                      <Copy size={16} className="mr-2 shrink-0" />
+                      {formatDataBR(rdo.data)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            {!isReadOnly && !existingId && !loading && !previousRdo && (
+            {!isReadOnly && !existingId && !loading && previousRdos.length === 0 && (
               <p className="mt-2 text-xs text-gray-400">Não há RDO anterior para copiar nesta obra.</p>
             )}
           </div>
