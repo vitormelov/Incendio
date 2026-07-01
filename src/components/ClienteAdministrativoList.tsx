@@ -119,25 +119,21 @@ export default function ClienteAdministrativoList({
   return (
     <>
       <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-14 px-3 py-3 text-left text-xs font-medium uppercase text-gray-500" />
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Cliente</th>
+              <th className="w-10 px-1.5 py-2 text-left text-xs font-medium uppercase text-gray-500" />
+              <th className="min-w-[14rem] px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Cliente</th>
               {showPlantaColumn && (
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Planta</th>
+                <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Planta</th>
               )}
-              <th className="w-36 min-w-[9rem] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Setor
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Corredor</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Box</th>
-              <th className="w-36 min-w-[9rem] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Inadimp.</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Processo</th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Ações</th>
+              <th className="w-28 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Setor</th>
+              <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Corredor</th>
+              <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Box</th>
+              <th className="w-28 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+              <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Inadimp.</th>
+              <th className="w-14 px-1 py-2 text-center text-[10px] font-medium uppercase text-gray-500">Processo</th>
+              <th className="px-2 py-2 text-right text-xs font-medium uppercase text-gray-500">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
@@ -150,62 +146,62 @@ export default function ClienteAdministrativoList({
 
               return (
                 <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3">
+                  <td className="px-1.5 py-2">
                     {canCycleStatus ? (
                       <button
                         type="button"
                         onClick={() => void handlePinClick(c)}
                         disabled={isChangingStatus}
-                        className="flex h-9 w-9 items-center justify-center rounded-full disabled:opacity-60"
+                        className="flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-60"
                         title={`Clique para alterar status (atual: ${getClienteAdministrativoStatusLabel(c)})`}
                       >
                         <span
-                          className="h-6 w-6 rounded-full shadow-sm ring-1 ring-gray-200 transition-transform hover:scale-110"
+                          className="h-5 w-5 rounded-full shadow-sm ring-1 ring-gray-200 transition-transform hover:scale-110"
                           style={{ backgroundColor: color }}
                         />
                       </button>
                     ) : (
-                      <div className="flex h-9 w-9 items-center justify-center" title="Disponível — edite para alterar">
+                      <div className="flex h-8 w-8 items-center justify-center" title="Disponível — edite para alterar">
                         <span
-                          className="h-6 w-6 rounded-full shadow-sm ring-1 ring-gray-200"
+                          className="h-5 w-5 rounded-full shadow-sm ring-1 ring-gray-200"
                           style={{ backgroundColor: color }}
                         />
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 truncate">
+                  <td className="min-w-[14rem] max-w-[18rem] px-2 py-2 font-medium text-gray-900 truncate">
                     {c.nomeCliente.trim() || <span className="text-gray-400 italic">Disponível</span>}
                   </td>
                   {showPlantaColumn && (
-                    <td className="px-4 py-3 text-sm text-gray-700">{plantaNome}</td>
+                    <td className="px-2 py-2 text-gray-700">{plantaNome}</td>
                   )}
-                  <td className="w-36 min-w-[9rem] px-4 py-3 text-sm text-gray-700">{c.setorLocal || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{c.corredor || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{c.box || '—'}</td>
-                  <td className="w-36 min-w-[9rem] px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                  <td className="w-28 max-w-[7rem] px-2 py-2 text-gray-700 truncate">{c.setorLocal || '—'}</td>
+                  <td className="px-2 py-2 text-gray-700 whitespace-nowrap">{c.corredor || '—'}</td>
+                  <td className="px-2 py-2 text-gray-700 whitespace-nowrap">{c.box || '—'}</td>
+                  <td className="w-28 px-2 py-2 text-gray-700 whitespace-nowrap">
                     {getClienteAdministrativoStatusLabel(c)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{c.inadimplencia ? 'Sim' : 'Não'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{c.processoJudicial ? 'Sim' : 'Não'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-2 py-2 text-gray-700 whitespace-nowrap">{c.inadimplencia ? 'Sim' : 'Não'}</td>
+                  <td className="w-14 px-1 py-2 text-center text-gray-700 whitespace-nowrap">{c.processoJudicial ? 'Sim' : 'Não'}</td>
+                  <td className="px-2 py-2">
+                    <div className="flex justify-end gap-1">
                       <button
                         type="button"
                         onClick={() => setObservacaoCliente(c)}
-                        className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50"
+                        className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white p-1.5 text-gray-700 hover:bg-gray-50"
                         title="Ver observação"
                       >
-                        <Eye size={16} />
+                        <Eye size={15} />
                       </button>
                       {showActions && (
                         <>
                           <button
                             type="button"
                             onClick={() => onEdit(c)}
-                            className="inline-flex items-center justify-center rounded-md border border-indigo-300 bg-indigo-50 p-2 text-indigo-800 hover:bg-indigo-100"
+                            className="inline-flex items-center justify-center rounded-md border border-indigo-300 bg-indigo-50 p-1.5 text-indigo-800 hover:bg-indigo-100"
                             title="Editar"
                           >
-                            <Pencil size={16} />
+                            <Pencil size={15} />
                           </button>
                           {onDelete && (
                             <button
@@ -215,10 +211,10 @@ export default function ClienteAdministrativoList({
                                   onDelete(c.id);
                                 }
                               }}
-                              className="inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white hover:bg-red-700"
+                              className="inline-flex items-center justify-center rounded-md bg-red-600 p-1.5 text-white hover:bg-red-700"
                               title="Excluir"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
                           )}
                         </>

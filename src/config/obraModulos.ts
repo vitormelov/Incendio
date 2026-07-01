@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ClipboardList,
   Flame,
+  Info,
   Receipt,
   Scale,
   Wrench,
@@ -13,6 +14,7 @@ import {
 
 /** Seções do menu dentro de uma obra. */
 export type ObraModuloId =
+  | 'informacoes'
   | 'dashboard'
   | 'incendios'
   | 'administrativo'
@@ -24,6 +26,7 @@ export type ObraModuloId =
   | 'rdo';
 
 export const ALL_OBRA_MODULO_IDS: ObraModuloId[] = [
+  'informacoes',
   'dashboard',
   'incendios',
   'administrativo',
@@ -44,6 +47,7 @@ export type ObraNavItemDef = {
 };
 
 export const OBRA_NAV_ITEMS: ObraNavItemDef[] = [
+  { modulo: 'informacoes', segment: 'informacoes', label: 'Informações', icon: Info },
   { modulo: 'dashboard', segment: '', label: 'Dashboard', icon: BarChart3, matchPaths: ['', '/dashboard'] },
   { modulo: 'incendios', segment: 'incendios', label: 'Incêndios', icon: Flame },
   { modulo: 'administrativo', segment: 'administrativo', label: 'Administrativo', icon: Briefcase, matchPaths: ['/administrativo'] },

@@ -62,6 +62,21 @@ export interface Obra {
   setores: Setor[];
 }
 
+export type ObraStatus = 'em_execucao' | 'parada' | 'nao_iniciada' | 'concluida';
+
+export interface ObraInformacoes {
+  obraId: string;
+  endereco: string;
+  status: ObraStatus;
+  dataInicio: string;
+  dataPrevistaTermino: string;
+  orcamentoBase: number;
+  orcamentoDinamico: number;
+  etapaObra: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ObraService {
   id: string;
   obraId: string;

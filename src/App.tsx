@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
+import TodasObrasInformacoesPage from './pages/TodasObrasInformacoesPage';
 import ObraLayout from './components/ObraLayout';
 import ObraServicesPage from './pages/ObraServicesPage';
 import ObraNotesPage from './pages/ObraNotesPage';
 import ObraGastosPage from './pages/ObraGastosPage';
 import ObraDashboardPage from './pages/ObraDashboardPage';
+import ObraInformacoesPage from './pages/ObraInformacoesPage';
 import ObraMedicaoPage from './pages/ObraMedicaoPage';
 import ObraPlanningPage from './pages/ObraPlanningPage';
 import ObraRDOPage from './pages/ObraRDOPage';
@@ -235,6 +237,14 @@ function App() {
             }
           />
           <Route
+            path="/obras/informacoes"
+            element={
+              <ProtectedRoute>
+                <TodasObrasInformacoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/"
             element={
               <ProtectedRoute>
@@ -261,6 +271,14 @@ function App() {
               }
             />
             <Route path="dashboard" element={<Navigate to=".." replace />} />
+            <Route
+              path="informacoes"
+              element={
+                <ProtectedObraModuloRoute modulo="informacoes">
+                  <ObraInformacoesPage />
+                </ProtectedObraModuloRoute>
+              }
+            />
             <Route
               path="incendios"
               element={

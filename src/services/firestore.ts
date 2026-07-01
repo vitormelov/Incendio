@@ -41,6 +41,8 @@ import {
   MedicaoLinha,
   MedicaoColuna,
   MedicaoCelula,
+  ObraInformacoes,
+  ObraStatus,
 } from '../types';
 
 const INCENDIOS_COLLECTION = 'incendios';
@@ -50,6 +52,7 @@ const OBRA_SERVICES_COLLECTION = 'obraServices';
 const OBRA_NOTES_COLLECTION = 'obraNotes';
 const OBRA_RDOS_COLLECTION = 'obraRdos';
 const OBRA_MEDICOES_COLLECTION = 'obraMedicoes';
+const OBRA_INFORMACOES_COLLECTION = 'obraInformacoes';
 
 const emptyMedicaoBloco = (): ObraMedicaoBloco => ({
   colunas: [],
@@ -910,4 +913,74 @@ export const upsertObraMedicao = async (
 
   await setDoc(ref, body, { merge: true });
 };
+
+const defaultObraInformacoes = (obraId: string): Omit<ObraInformacoes, 'createdAt' | 'updatedAt'> => ({
+  obraId,
+  endereco: '',
+  status: 'nao_iniciada',
+  dataInicio: '',
+  dataPrevistaTermino: '',
+  orcamentoBase: 0,
+  orcamentoDinamico: 0,
+  etapaObra: '',
+});
+
+const parseObraStatus = (value: unknown): ObraStatus => {
+  if (value === 'em_execucao' || value === 'parada' || value === 'concluida') return value;
+  return 'nao_iniciada';
+};
+
+export const getObraInformacoes = async (obraId: string): Promise<ObraInformacoes | null> => {
+  const snap = await getDoc(doc(db, OBRA_INFORMACOES_COLLECTION, obraId));
+  if (!snap.exists()) return null;
+  const d = snap.data() as Record<string, unknown>;
+  const ts = (v: unknown) =>
+    v && typeof v === 'object' && 'toDate' in v && typeof (v as { toDate: () => Date }).toDate === 'function'
+      ? (v as { toDate: () => Date }).toDate().toISOString()
+      : String(v ?? '');
+  return {
+    obraId,
+    endereco: String(d.endereco ?? ''),
+    status: parseObraStatus(d.status),
+    dataInicio: String(d.dataInicio ?? ''),
+    dataPrevistaTermino: String(d.dataPrevistaTermino ?? ''),
+    orcamentoBase: Number(d.orcamentoBase ?? 0),
+    orcamentoDinamico: Number(d.orcamentoDinamico ?? 0),
+    etapaObra: String(d.etapaObra ?? ''),
+    createdAt: ts(d.createdAt),
+    updatedAt: ts(d.updatedAt),
+  };
+};
+
+export const upsertObraInformacoes = async (
+  obraId: string,
+  payload: Omit<ObraInformacoes, 'obraId' | 'createdAt' | 'updatedAt'>
+): Promise<void> => {
+  const ref = doc(db, OBRA_INFORMACOES_COLLECTION, obraId);
+  const existing = await getDoc(ref);
+  const now = Timestamp.now();
+  const body = {
+    obraId,
+    endereco: payload.endereco.trim(),
+    status: payload.status,
+    dataInicio: payload.dataInicio,
+    dataPrevistaTermino: payload.dataPrevistaTermino,
+    orcamentoBase: payload.orcamentoBase,
+    orcamentoDinamico: payload.orcamentoDinamico,
+    etapaObra: payload.etapaObra.trim(),
+    updatedAt: now,
+  };
+
+  if (!existing.exists()) {
+    await setDoc(ref, {
+      ...body,
+      createdAt: now,
+    });
+    return;
+  }
+
+  await setDoc(ref, body, { merge: true });
+};
+
+export { defaultObraInformacoes };
 

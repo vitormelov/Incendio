@@ -1,45 +1,10 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { obras } from '../config/setores';
-import type { Obra } from '../types';
-import { Building2 } from 'lucide-react';
-import { getCurrentUser, isAdmin, getUserFirestoreProfile, isDemoMode } from '../services/auth';
-import { DEMO_OBRA_ID } from '../services/demoMode';
-import { getObraById } from '../config/setores';
+import { Building2, Info } from 'lucide-react';
+import { isDemoMode } from '../services/auth';
+import { useVisibleObras } from '../hooks/useVisibleObras';
 
 export default function HomePage() {
-  const [visibleObras, setVisibleObras] = useState<Obra[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const user = getCurrentUser();
-      if (!user) {
-        if (!cancelled) setVisibleObras([]);
-        return;
-      }
-      if (isDemoMode()) {
-        const demoObra = getObraById(DEMO_OBRA_ID);
-        if (!cancelled) setVisibleObras(demoObra ? [demoObra] : []);
-        return;
-      }
-      if (isAdmin(user)) {
-        if (!cancelled) setVisibleObras(obras);
-        return;
-      }
-      const profile = await getUserFirestoreProfile(user.uid);
-      if (cancelled) return;
-      const isCollab = profile.permissions.includes('colaborador');
-      if (profile.obraIdsPermitidos === null) {
-        setVisibleObras(isCollab ? obras : []);
-      } else {
-        setVisibleObras(obras.filter((o) => profile.obraIdsPermitidos!.includes(o.id)));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const visibleObras = useVisibleObras();
 
   if (visibleObras === null) {
     return (
@@ -68,6 +33,18 @@ export default function HomePage() {
           <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
             Nenhuma obra está liberada para sua conta. Peça ao administrador para marcar ao menos uma obra com acesso
             para o seu usuário na página de Colaboradores.
+          </div>
+        )}
+
+        {visibleObras.length > 0 && (
+          <div className="text-center mb-8">
+            <Link
+              to="/obras/informacoes"
+              className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Info size={16} />
+              Informações das obras
+            </Link>
           </div>
         )}
 

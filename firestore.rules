@@ -64,6 +64,12 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin() || isCollaborador();
     }
+
+    // Informações da obra
+    match /obraInformacoes/{obraId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin() || isCollaborador();
+    }
   }
 }
 

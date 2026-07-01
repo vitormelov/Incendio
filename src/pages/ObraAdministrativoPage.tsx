@@ -208,13 +208,13 @@ export default function ObraAdministrativoPage() {
           <button
             type="button"
             onClick={() => setTab('clientes')}
-            className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-medium border ${
+            className={`inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium border ${
               tab === 'clientes'
                 ? 'bg-gray-900 text-white border-gray-900'
                 : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            <List size={18} className="mr-2" />
+            <List size={16} className="mr-1.5" />
             Clientes ({filtered.length})
           </button>
           <button
