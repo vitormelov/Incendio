@@ -20,14 +20,13 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <p className="text-xl text-gray-600">Sistema de Gestão de Problemas em Obra</p>
-          {isDemoMode() && (
-            <p className="mt-2 text-sm text-gray-500">
+        {isDemoMode() && (
+          <div className="text-center mb-8">
+            <p className="text-sm text-gray-500">
               Modo demonstração — visualização da obra Hotel Central (somente leitura).
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         {visibleObras.length === 0 && (
           <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
@@ -43,7 +42,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <Info size={16} />
-              Informações das obras
+              Todas as obras
             </Link>
           </div>
         )}
