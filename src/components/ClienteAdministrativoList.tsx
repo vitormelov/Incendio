@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
-import { Eye, Pencil, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Trash2, X } from 'lucide-react';
 import type { ClienteAdministrativo, ClienteAdministrativoStatus } from '../types';
 import {
   cycleClienteAdministrativoStatus,
@@ -24,11 +24,40 @@ interface ClienteAdministrativoListProps {
   emptyMessage?: string;
 }
 
+type SortKey = 'cliente' | 'planta' | 'setor' | 'corredor' | 'box' | 'status' | 'inadimplencia' | 'processo';
+type SortDir = 'asc' | 'desc';
+
 function formatClienteDateTime(iso: string) {
   if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
   return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+}
+
+function getSortValue(cliente: ClienteAdministrativo, key: SortKey): string | number {
+  switch (key) {
+    case 'cliente':
+      return cliente.nomeCliente.trim().toLocaleLowerCase('pt-BR') || 'zzzz';
+    case 'planta':
+      return (getSetorAdministrativoById(cliente.setor)?.nome ?? cliente.setor).toLocaleLowerCase('pt-BR');
+    case 'setor':
+      return (cliente.setorLocal || '').toLocaleLowerCase('pt-BR');
+    case 'corredor':
+      return (cliente.corredor || '').toLocaleLowerCase('pt-BR');
+    case 'box':
+      return (cliente.box || '').toLocaleLowerCase('pt-BR');
+    case 'status':
+      return getClienteAdministrativoStatusLabel(cliente).toLocaleLowerCase('pt-BR');
+    case 'inadimplencia':
+      return cliente.inadimplencia ? 1 : 0;
+    case 'processo':
+      return cliente.processoJudicial ? 1 : 0;
+  }
+}
+
+function compareSortValues(a: string | number, b: string | number): number {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b), 'pt-BR', { numeric: true, sensitivity: 'base' });
 }
 
 function ObservacaoModal({
@@ -87,6 +116,56 @@ function ObservacaoModal({
   );
 }
 
+function SortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+  className = '',
+  align = 'left',
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey | null;
+  direction: SortDir | null;
+  onSort: (key: SortKey) => void;
+  className?: string;
+  align?: 'left' | 'center' | 'right';
+}) {
+  const isActive = activeKey === sortKey && direction !== null;
+  const thAlign =
+    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+  const btnAlign =
+    align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start';
+
+  return (
+    <th className={`${className} ${thAlign}`}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex w-full items-center gap-1 ${btnAlign} text-[inherit] font-medium uppercase tracking-wide hover:text-gray-800`}
+        title={
+          !isActive
+            ? `Ordenar por ${label} (A→Z)`
+            : direction === 'asc'
+              ? `Ordenar por ${label} (Z→A)`
+              : `Remover ordenação de ${label}`
+        }
+      >
+        <span>{label}</span>
+        {isActive && direction === 'asc' ? (
+          <ArrowUp size={12} className="shrink-0 text-violet-600" />
+        ) : isActive && direction === 'desc' ? (
+          <ArrowDown size={12} className="shrink-0 text-violet-600" />
+        ) : (
+          <ArrowUpDown size={12} className="shrink-0 opacity-40" />
+        )}
+      </button>
+    </th>
+  );
+}
+
 export default function ClienteAdministrativoList({
   clientes,
   onEdit,
@@ -98,6 +177,32 @@ export default function ClienteAdministrativoList({
 }: ClienteAdministrativoListProps) {
   const [observacaoCliente, setObservacaoCliente] = useState<ClienteAdministrativo | null>(null);
   const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir | null>(null);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir('asc');
+      return;
+    }
+    if (sortDir === 'asc') {
+      setSortDir('desc');
+      return;
+    }
+    setSortKey(null);
+    setSortDir(null);
+  };
+
+  const sortedClientes = useMemo(() => {
+    if (!sortKey || !sortDir) return clientes;
+    const copy = [...clientes];
+    copy.sort((a, b) => {
+      const cmp = compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey));
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return copy;
+  }, [clientes, sortKey, sortDir]);
 
   const handlePinClick = async (cliente: ClienteAdministrativo) => {
     if (!onStatusChange || isClienteAdministrativoDisponivel(cliente)) return;
@@ -116,6 +221,8 @@ export default function ClienteAdministrativoList({
     return <div className="py-12 text-center text-gray-500">{emptyMessage}</div>;
   }
 
+  const headerBase = 'px-2 py-2 text-xs font-medium uppercase text-gray-500';
+
   return (
     <>
       <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -123,21 +230,78 @@ export default function ClienteAdministrativoList({
           <thead className="bg-gray-50">
             <tr>
               <th className="w-10 px-1.5 py-2 text-left text-xs font-medium uppercase text-gray-500" />
-              <th className="min-w-[14rem] px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Cliente</th>
+              <SortableHeader
+                label="Cliente"
+                sortKey="cliente"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={handleSort}
+                className={`min-w-[14rem] ${headerBase}`}
+              />
               {showPlantaColumn && (
-                <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Planta</th>
+                <SortableHeader
+                  label="Planta"
+                  sortKey="planta"
+                  activeKey={sortKey}
+                  direction={sortDir}
+                  onSort={handleSort}
+                  className={headerBase}
+                />
               )}
-              <th className="w-28 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Setor</th>
-              <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Corredor</th>
-              <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Box</th>
-              <th className="w-28 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-              <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">Inadimp.</th>
-              <th className="w-14 px-1 py-2 text-center text-[10px] font-medium uppercase text-gray-500">Processo</th>
+              <SortableHeader
+                label="Setor"
+                sortKey="setor"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={handleSort}
+                className={`w-28 ${headerBase}`}
+              />
+              <SortableHeader
+                label="Corredor"
+                sortKey="corredor"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={handleSort}
+                className={headerBase}
+              />
+              <SortableHeader
+                label="Box"
+                sortKey="box"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={handleSort}
+                className={headerBase}
+              />
+              <SortableHeader
+                label="Status"
+                sortKey="status"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={handleSort}
+                className={`w-28 ${headerBase}`}
+              />
+              <SortableHeader
+                label="Inadimp."
+                sortKey="inadimplencia"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={handleSort}
+                className={headerBase}
+              />
+              <SortableHeader
+                label="Processo"
+                sortKey="processo"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={handleSort}
+                className={`w-14 px-1 py-2 text-[10px] font-medium uppercase text-gray-500`}
+                align="center"
+              />
               <th className="px-2 py-2 text-right text-xs font-medium uppercase text-gray-500">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {clientes.map((c) => {
+            {sortedClientes.map((c) => {
               const color = getClienteAdministrativoPinColor(c);
               const plantaNome = getSetorAdministrativoById(c.setor)?.nome ?? c.setor;
               const disponivel = isClienteAdministrativoDisponivel(c);
