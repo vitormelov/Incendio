@@ -37,6 +37,7 @@ export default function ObraAdministrativoPage() {
   const [showForm, setShowForm] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [listFilters, setListFilters] = useState<ClienteAdminListFilters>(emptyClienteAdminFilters);
+  const [tvMode, setTvMode] = useState(false);
 
   const obra = obraId ? getObraById(obraId) : undefined;
   const setores = obraId ? getSetoresAdministrativosByObraId(obraId) : [];
@@ -56,10 +57,12 @@ export default function ObraAdministrativoPage() {
     void run();
   }, [obraId]);
 
-  const loadAll = async () => {
+  const loadAll = async (opts?: { silent?: boolean }) => {
     try {
-      setLoadingList(true);
-      setErrorList('');
+      if (!opts?.silent) {
+        setLoadingList(true);
+        setErrorList('');
+      }
       const results = await Promise.all(setores.map((s) => getClientesAdministrativos(s.id)));
       const merged = results.flat().filter((c) => c.obraId === obraId);
       const map = new Map<string, ClienteAdministrativo>();
@@ -69,9 +72,11 @@ export default function ObraAdministrativoPage() {
       setAllClientes(unique);
     } catch (err) {
       console.error('Erro ao carregar clientes:', err);
-      setErrorList('Não foi possível carregar os clientes desta obra.');
+      if (!opts?.silent) {
+        setErrorList('Não foi possível carregar os clientes desta obra.');
+      }
     } finally {
-      setLoadingList(false);
+      if (!opts?.silent) setLoadingList(false);
     }
   };
 
@@ -79,6 +84,15 @@ export default function ObraAdministrativoPage() {
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
+
+  useEffect(() => {
+    if (!tvMode) return;
+    const id = window.setInterval(() => {
+      void loadAll({ silent: true });
+    }, 30 * 60 * 1000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tvMode, obraId]);
 
   const filtered = useMemo(
     () => filterClientesAdministrativos(allClientes, listFilters),
@@ -290,7 +304,9 @@ export default function ObraAdministrativoPage() {
             <ClienteAdministrativoDashboard
               geral={dashboardStats.geral}
               porSetor={dashboardStats.porSetor}
-              loading={loadingList}
+              loading={loadingList && !tvMode}
+              obraNome={obra.nome}
+              onTvModeChange={setTvMode}
             />
           </div>
         )}
