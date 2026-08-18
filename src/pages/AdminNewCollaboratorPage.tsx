@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { signup } from '../services/auth';
+import { recordSiteActivity } from '../services/activityLog';
 import { ArrowLeft, CheckCircle, Lock, Mail, User as UserIcon, UserPlus, XCircle } from 'lucide-react';
 
 export default function AdminNewCollaboratorPage() {
@@ -34,6 +35,11 @@ export default function AdminNewCollaboratorPage() {
 
     try {
       await signup(email, password, nome.trim());
+      await recordSiteActivity({
+        acao: 'criou',
+        modulo: 'colaboradores',
+        descricao: `Cadastrou o colaborador ${nome.trim()} (${email})`,
+      });
       setSuccess(`Conta criada com sucesso para ${nome}!`);
       setNome('');
       setEmail('');

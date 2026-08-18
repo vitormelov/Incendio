@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { login, getCurrentUser, onAuthChange, clearPermissionsCache, enterDemoMode } from '../services/auth';
+import { recordSiteActivity } from '../services/activityLog';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock, Presentation } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -51,6 +52,11 @@ export default function LoginPage() {
     try {
       await login(email, password);
       clearPermissionsCache();
+      await recordSiteActivity({
+        acao: 'entrou',
+        modulo: 'acesso',
+        descricao: 'Entrou no site',
+      });
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login.');

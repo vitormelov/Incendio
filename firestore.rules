@@ -70,6 +70,13 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin() || isCollaborador();
     }
+
+    // Log de ações dos usuários (últimos 7 dias)
+    match /siteActivityLogs/{logId} {
+      allow read, delete: if isAdmin();
+      allow create: if signedIn();
+      allow update: if false;
+    }
   }
 }
 

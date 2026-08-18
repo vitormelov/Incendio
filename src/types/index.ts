@@ -216,3 +216,30 @@ export interface Collaborator {
   updatedAt?: string | null;
 }
 
+export type SiteActivityAcao = 'criou' | 'editou' | 'excluiu' | 'entrou' | 'saiu';
+
+export type SiteActivityModulo =
+  | 'incendios'
+  | 'administrativo'
+  | 'servicos'
+  | 'notas'
+  | 'planejamento'
+  | 'rdo'
+  | 'medicao'
+  | 'informacoes'
+  | 'colaboradores'
+  | 'acesso';
+
+export interface SiteActivityLog {
+  id: string;
+  createdAt: string;
+  usuarioId: string;
+  usuarioNome: string;
+  usuarioEmail: string;
+  acao: SiteActivityAcao;
+  modulo: SiteActivityModulo;
+  descricao: string;
+  obraId?: string;
+  obraNome?: string;
+}
+

@@ -16,7 +16,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { parseObraModulosPermitidosDoUsuario } from '../config/obraModulos';
-import { parseObraIdsPermitidosDoUsuario } from '../config/setores';
+import { getObraIdForSetor, getSetorById, parseObraIdsPermitidosDoUsuario } from '../config/setores';
+import { recordSiteActivity } from './activityLog';
 import {
   normalizeClienteAdministrativoFields,
   normalizeClienteAdministrativoPartial,
@@ -303,6 +304,11 @@ export const getCollaborators = async (): Promise<Collaborator[]> => {
 
 export const deleteCollaborator = async (userId: string): Promise<void> => {
   await deleteDoc(doc(db, USERS_COLLECTION, userId));
+  void recordSiteActivity({
+    acao: 'excluiu',
+    modulo: 'colaboradores',
+    descricao: 'Removeu um colaborador do sistema',
+  });
 };
 
 export const updateCollaborator = async (
@@ -326,6 +332,11 @@ export const updateCollaborator = async (
     payload.obraModulosPermitidos = data.obraModulosPermitidos;
   }
   await updateDoc(ref, payload);
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'colaboradores',
+    descricao: `Atualizou permissões de ${data.nome}`,
+  });
 };
 
 export const getIncendios = async (setor?: string): Promise<Incendio[]> => {
@@ -391,6 +402,15 @@ export const createIncendio = async (incendio: Omit<Incendio, 'id' | 'createdAt'
     updatedAt: Timestamp.now(),
   });
 
+  void recordSiteActivity({
+    acao: 'criou',
+    modulo: 'incendios',
+    descricao: incendio.descricao?.trim()
+      ? `Criou incêndio: ${incendio.descricao.trim()}`
+      : `Criou incêndio em ${getSetorById(incendio.setor)?.nome || incendio.setor}`,
+    obraId: getObraIdForSetor(incendio.setor),
+  });
+
   return docRef.id;
 };
 
@@ -419,10 +439,26 @@ export const updateIncendio = async (id: string, incendio: Partial<Omit<Incendio
   }
   
   await updateDoc(docRef, updateData);
+  const resolved = incendio.dataFoiApagada;
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'incendios',
+    descricao: resolved
+      ? 'Marcou um incêndio como resolvido'
+      : incendio.descricao?.trim()
+        ? `Editou incêndio: ${incendio.descricao.trim()}`
+        : 'Editou um incêndio',
+    obraId: incendio.setor ? getObraIdForSetor(incendio.setor) : undefined,
+  });
 };
 
 export const deleteIncendio = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, INCENDIOS_COLLECTION, id));
+  void recordSiteActivity({
+    acao: 'excluiu',
+    modulo: 'incendios',
+    descricao: 'Excluiu um incêndio',
+  });
 };
 
 const mapClienteAdministrativoDoc = (id: string, data: Record<string, unknown>): ClienteAdministrativo => {
@@ -490,6 +526,14 @@ export const createClienteAdministrativo = async (
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
+  void recordSiteActivity({
+    acao: 'criou',
+    modulo: 'administrativo',
+    descricao: normalized.nomeCliente.trim()
+      ? `Cadastrou cliente ${normalized.nomeCliente.trim()} (box ${normalized.box || '—'})`
+      : `Cadastrou box ${normalized.box || '—'} como disponível`,
+    obraId: normalized.obraId,
+  });
   return docRef.id;
 };
 
@@ -502,10 +546,25 @@ export const updateClienteAdministrativo = async (
     ...normalized,
     updatedAt: Timestamp.now(),
   });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'administrativo',
+    descricao: normalized.nomeCliente?.trim()
+      ? `Editou cliente ${normalized.nomeCliente.trim()}`
+      : normalized.status
+        ? `Alterou status do cliente para ${normalized.status}`
+        : 'Editou um cliente no administrativo',
+    obraId: typeof normalized.obraId === 'string' ? normalized.obraId : undefined,
+  });
 };
 
 export const deleteClienteAdministrativo = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, CLIENTES_ADMIN_COLLECTION, id));
+  void recordSiteActivity({
+    acao: 'excluiu',
+    modulo: 'administrativo',
+    descricao: 'Excluiu um cliente do administrativo',
+  });
 };
 
 export const getObraServices = async (obraId: string): Promise<ObraService[]> => {
@@ -554,6 +613,13 @@ export const createObraService = async (
     updatedAt: Timestamp.now(),
   });
 
+  void recordSiteActivity({
+    acao: 'criou',
+    modulo: 'servicos',
+    descricao: `Criou serviço: ${data.descricao || data.pacote}`,
+    obraId: data.obraId,
+  });
+
   return docRef.id;
 };
 
@@ -566,6 +632,11 @@ export const updateObraService = async (
     descricao: data.descricao,
     verba: data.verba,
     updatedAt: Timestamp.now(),
+  });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'servicos',
+    descricao: `Editou serviço: ${data.descricao || data.pacote}`,
   });
 };
 
@@ -605,10 +676,20 @@ export const updateObraServicePlanning = async (
     finalizado: !!data.finalizado,
     updatedAt: Timestamp.now(),
   });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'planejamento',
+    descricao: data.finalizado ? 'Marcou um serviço como finalizado no planejamento' : 'Atualizou o planejamento de um serviço',
+  });
 };
 
 export const deleteObraService = async (serviceId: string): Promise<void> => {
   await deleteDoc(doc(db, OBRA_SERVICES_COLLECTION, serviceId));
+  void recordSiteActivity({
+    acao: 'excluiu',
+    modulo: 'servicos',
+    descricao: 'Excluiu um serviço',
+  });
 };
 
 export const getObraNotes = async (obraId: string): Promise<ObraNote[]> => {
@@ -649,6 +730,13 @@ export const createObraNote = async (
     updatedAt: Timestamp.now(),
   });
 
+  void recordSiteActivity({
+    acao: 'criou',
+    modulo: 'notas',
+    descricao: `Cadastrou nota ${data.numero || ''} ${data.empresa ? `de ${data.empresa}` : ''}`.trim(),
+    obraId: data.obraId,
+  });
+
   return docRef.id;
 };
 
@@ -665,10 +753,20 @@ export const updateObraNote = async (
     valor: data.valor,
     updatedAt: Timestamp.now(),
   });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'notas',
+    descricao: `Editou a nota ${data.numero || ''}`,
+  });
 };
 
 export const deleteObraNote = async (noteId: string): Promise<void> => {
   await deleteDoc(doc(db, OBRA_NOTES_COLLECTION, noteId));
+  void recordSiteActivity({
+    acao: 'excluiu',
+    modulo: 'notas',
+    descricao: 'Excluiu uma nota',
+  });
 };
 
 export const getIncendiosByFilter = async (
@@ -832,6 +930,12 @@ export const upsertObraRDO = async (
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
+    void recordSiteActivity({
+      acao: 'criou',
+      modulo: 'rdo',
+      descricao: `Criou RDO do dia ${data}`,
+      obraId,
+    });
     return id;
   }
 
@@ -839,12 +943,24 @@ export const upsertObraRDO = async (
     ...rest,
     updatedAt: Timestamp.now(),
   });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'rdo',
+    descricao: `Atualizou RDO do dia ${data}`,
+    obraId,
+  });
   return id;
 };
 
 export const deleteObraRDO = async (obraId: string, data: string): Promise<void> => {
   const id = buildRDODocId(obraId, data);
   await deleteDoc(doc(db, OBRA_RDOS_COLLECTION, id));
+  void recordSiteActivity({
+    acao: 'excluiu',
+    modulo: 'rdo',
+    descricao: `Excluiu RDO do dia ${data}`,
+    obraId,
+  });
 };
 
 const medicaoBlocoToFirestore = (b: ObraMedicaoBloco) => ({
@@ -908,10 +1024,22 @@ export const upsertObraMedicao = async (
       ...body,
       createdAt: now,
     });
+    void recordSiteActivity({
+      acao: 'criou',
+      modulo: 'medicao',
+      descricao: 'Criou a medição da obra',
+      obraId,
+    });
     return;
   }
 
   await setDoc(ref, body, { merge: true });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'medicao',
+    descricao: 'Atualizou a medição da obra',
+    obraId,
+  });
 };
 
 const defaultObraInformacoes = (obraId: string): Omit<ObraInformacoes, 'createdAt' | 'updatedAt'> => ({
@@ -976,10 +1104,22 @@ export const upsertObraInformacoes = async (
       ...body,
       createdAt: now,
     });
+    void recordSiteActivity({
+      acao: 'criou',
+      modulo: 'informacoes',
+      descricao: 'Cadastrou as informações da obra',
+      obraId,
+    });
     return;
   }
 
   await setDoc(ref, body, { merge: true });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'informacoes',
+    descricao: 'Atualizou as informações da obra',
+    obraId,
+  });
 };
 
 export { defaultObraInformacoes };

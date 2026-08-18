@@ -19,6 +19,7 @@ import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
 import AdminCollaboratorsPage from './pages/AdminCollaboratorsPage';
 import AdminNewCollaboratorPage from './pages/AdminNewCollaboratorPage';
+import AdminActivityLogPage from './pages/AdminActivityLogPage';
 import IncendiosApagadosPage from './pages/IncendiosApagadosPage';
 import IncendioList from './components/IncendioList';
 import IncendioForm from './components/IncendioForm';
@@ -31,6 +32,7 @@ import Logo from './components/Logo';
 import { useState, useEffect } from 'react';
 import { Incendio } from './types';
 import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
+import { recordSiteActivity } from './services/activityLog';
 import { getCurrentUser, logout, onAuthChange, isAdmin, clearPermissionsCache, isDemoMode } from './services/auth';
 import { Home, LogOut, User, Shield, Menu, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
@@ -81,6 +83,11 @@ function App() {
     try {
       const u = getCurrentUser();
       if (u) clearPermissionsCache(u.uid);
+      await recordSiteActivity({
+        acao: 'saiu',
+        modulo: 'acesso',
+        descricao: 'Saiu do site',
+      });
       await logout();
       window.location.href = '/login';
     } catch (error) {
@@ -233,6 +240,14 @@ function App() {
             element={
               <ProtectedAdminRoute>
                 <AdminNewCollaboratorPage />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/log"
+            element={
+              <ProtectedAdminRoute>
+                <AdminActivityLogPage />
               </ProtectedAdminRoute>
             }
           />

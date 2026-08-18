@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, Shield, UserCog, UserPlus } from 'lucide-react';
+import { ChevronRight, ScrollText, Shield, UserCog, UserPlus } from 'lucide-react';
 
 export default function AdminPage() {
   return (
@@ -44,6 +44,24 @@ export default function AdminPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Cadastrar novo colaborador</h2>
                 <p className="text-sm text-gray-600">
                   Crie uma nova conta para um funcionário acessar o sistema.
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="text-gray-400" size={22} />
+          </Link>
+
+          <Link
+            to="/admin/log"
+            className="flex items-center justify-between rounded-lg border border-gray-200 p-5 hover:border-purple-300 hover:bg-purple-50 transition-colors"
+          >
+            <div className="flex items-start gap-4">
+              <div className="rounded-full bg-purple-100 p-3">
+                <ScrollText className="text-purple-700" size={24} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Log do site</h2>
+                <p className="text-sm text-gray-600">
+                  Veja as ações dos usuários nos últimos 7 dias.
                 </p>
               </div>
             </div>
