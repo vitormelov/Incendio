@@ -1,4 +1,4 @@
-import { FileDown, FileSpreadsheet } from 'lucide-react';
+import { FileDown, FileSpreadsheet, Save } from 'lucide-react';
 import { SETOR_LOCAL_OPCOES } from '../config/clienteAdministrativoSetores';
 import type { ClienteAdminListFilters } from '../utils/filterClientesAdministrativos';
 import { emptyClienteAdminFilters } from '../utils/filterClientesAdministrativos';
@@ -12,6 +12,10 @@ interface ClienteAdministrativoFiltersProps {
   exportingPdf?: boolean;
   onExportExcel?: () => void;
   exportingExcel?: boolean;
+  onSaveSnapshot?: () => void;
+  savingSnapshot?: boolean;
+  /** Quantidade usada para habilitar "Salvar situação" (padrão: totalCount). */
+  saveSnapshotCount?: number;
 }
 
 const selectClass =
@@ -26,8 +30,12 @@ export default function ClienteAdministrativoFilters({
   exportingPdf = false,
   onExportExcel,
   exportingExcel = false,
+  onSaveSnapshot,
+  savingSnapshot = false,
+  saveSnapshotCount,
 }: ClienteAdministrativoFiltersProps) {
   const patch = (partial: Partial<ClienteAdminListFilters>) => onChange({ ...filters, ...partial });
+  const snapshotTotal = saveSnapshotCount ?? totalCount;
 
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 space-y-3">
@@ -53,12 +61,24 @@ export default function ClienteAdministrativoFilters({
             <button
               type="button"
               onClick={onExportExcel}
-              disabled={filteredCount === 0 || exportingPdf || exportingExcel}
+              disabled={filteredCount === 0 || exportingPdf || exportingExcel || savingSnapshot}
               className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
               title="Exportar lista filtrada em Excel"
             >
               <FileSpreadsheet size={14} className="mr-1.5" />
               {exportingExcel ? 'Gerando Excel...' : 'Exportar Excel'}
+            </button>
+          )}
+          {onSaveSnapshot && (
+            <button
+              type="button"
+              onClick={onSaveSnapshot}
+              disabled={snapshotTotal === 0 || exportingPdf || exportingExcel || savingSnapshot}
+              className="inline-flex items-center rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-100 disabled:opacity-50"
+              title="Salvar situação atual de todos os clientes da obra"
+            >
+              <Save size={14} className="mr-1.5" />
+              {savingSnapshot ? 'Salvando...' : 'Salvar situação atual'}
             </button>
           )}
         </div>

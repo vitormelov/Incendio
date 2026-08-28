@@ -1,5 +1,26 @@
 export type ClienteAdministrativoStatus = 'aberto' | 'fechado' | 'disponivel' | 'em_reforma';
 
+/** Estado de um cliente dentro de um snapshot histórico. */
+export interface ClienteAdministrativoSnapshotItem {
+  clienteId: string;
+  nomeCliente: string;
+  setor: string;
+  setorLocal: string;
+  corredor: string;
+  box: string;
+  status: ClienteAdministrativoStatus;
+  inadimplencia: boolean;
+  processoJudicial: boolean;
+}
+
+export interface ClienteAdministrativoSnapshot {
+  id: string;
+  obraId: string;
+  savedAt: string;
+  savedByNome: string;
+  clientes: ClienteAdministrativoSnapshotItem[];
+}
+
 export interface ClienteAdministrativo {
   id: string;
   /** ID da planta/setor (mesmo usado em incêndios). */

@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "clientesAdministrativosSnapshots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "obraId", "order": "ASCENDING" },
+        { "fieldPath": "savedAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -41,6 +41,14 @@ service cloud.firestore {
       allow delete: if signedIn();
     }
 
+    // Snapshots históricos da situação dos clientes (Administrativo)
+    match /clientesAdministrativosSnapshots/{snapshotId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if isAdmin() || isCollaborador();
+      allow delete: if signedIn();
+    }
+
     // Serviços por obra (pacote/descrição/verba)
     match /obraServices/{serviceId} {
       allow read: if signedIn();

@@ -25,6 +25,8 @@ import {
 import {
   Incendio,
   ClienteAdministrativo,
+  ClienteAdministrativoSnapshot,
+  ClienteAdministrativoSnapshotItem,
   Disciplina,
   Severidade,
   Collaborator,
@@ -48,6 +50,7 @@ import {
 
 const INCENDIOS_COLLECTION = 'incendios';
 const CLIENTES_ADMIN_COLLECTION = 'clientesAdministrativos';
+const CLIENTES_ADMIN_SNAPSHOTS_COLLECTION = 'clientesAdministrativosSnapshots';
 const USERS_COLLECTION = 'users';
 const OBRA_SERVICES_COLLECTION = 'obraServices';
 const OBRA_NOTES_COLLECTION = 'obraNotes';
@@ -564,6 +567,109 @@ export const deleteClienteAdministrativo = async (id: string): Promise<void> => 
     acao: 'excluiu',
     modulo: 'administrativo',
     descricao: 'Excluiu um cliente do administrativo',
+  });
+};
+
+function mapClienteAdministrativoSnapshotDoc(
+  id: string,
+  data: Record<string, unknown>
+): ClienteAdministrativoSnapshot {
+  const savedAtRaw = data.savedAt;
+  let savedAt = '';
+  if (savedAtRaw instanceof Timestamp) {
+    savedAt = savedAtRaw.toDate().toISOString();
+  } else if (
+    typeof savedAtRaw === 'object' &&
+    savedAtRaw !== null &&
+    'toDate' in savedAtRaw &&
+    typeof (savedAtRaw as { toDate: () => Date }).toDate === 'function'
+  ) {
+    savedAt = (savedAtRaw as { toDate: () => Date }).toDate().toISOString();
+  } else if (typeof savedAtRaw === 'string') {
+    savedAt = savedAtRaw;
+  }
+
+  const clientesRaw = Array.isArray(data.clientes) ? data.clientes : [];
+  const clientes: ClienteAdministrativoSnapshotItem[] = clientesRaw.map((item) => {
+    const c = item as Record<string, unknown>;
+    return {
+      clienteId: String(c.clienteId ?? ''),
+      nomeCliente: String(c.nomeCliente ?? ''),
+      setor: String(c.setor ?? ''),
+      setorLocal: String(c.setorLocal ?? ''),
+      corredor: String(c.corredor ?? ''),
+      box: String(c.box ?? ''),
+      status: (c.status as ClienteAdministrativoSnapshotItem['status']) ?? 'disponivel',
+      inadimplencia: Boolean(c.inadimplencia),
+      processoJudicial: Boolean(c.processoJudicial),
+    };
+  });
+
+  return {
+    id,
+    obraId: String(data.obraId ?? ''),
+    savedAt,
+    savedByNome: String(data.savedByNome ?? ''),
+    clientes,
+  };
+}
+
+export const saveClienteAdministrativoSnapshot = async (
+  obraId: string,
+  clientes: ClienteAdministrativo[],
+  savedByNome: string
+): Promise<string> => {
+  const items: ClienteAdministrativoSnapshotItem[] = clientes.map((c) => ({
+    clienteId: c.id,
+    nomeCliente: c.nomeCliente,
+    setor: c.setor,
+    setorLocal: c.setorLocal,
+    corredor: c.corredor,
+    box: c.box,
+    status: c.status,
+    inadimplencia: c.inadimplencia,
+    processoJudicial: c.processoJudicial,
+  }));
+
+  const docRef = await addDoc(collection(db, CLIENTES_ADMIN_SNAPSHOTS_COLLECTION), {
+    obraId,
+    savedAt: Timestamp.now(),
+    savedByNome,
+    clientes: items,
+  });
+
+  void recordSiteActivity({
+    acao: 'criou',
+    modulo: 'administrativo',
+    descricao: `Salvou situação atual (${items.length} cliente(s))`,
+    obraId,
+  });
+
+  return docRef.id;
+};
+
+export const getClienteAdministrativoSnapshots = async (
+  obraId: string
+): Promise<ClienteAdministrativoSnapshot[]> => {
+  const q = query(
+    collection(db, CLIENTES_ADMIN_SNAPSHOTS_COLLECTION),
+    where('obraId', '==', obraId)
+  );
+  const querySnapshot = await getDocs(q);
+  const results = querySnapshot.docs.map((snap) =>
+    mapClienteAdministrativoSnapshotDoc(snap.id, snap.data())
+  );
+  results.sort((a, b) => new Date(a.savedAt).getTime() - new Date(b.savedAt).getTime());
+  return results;
+};
+
+export const deleteClienteAdministrativoSnapshot = async (id: string, obraId?: string): Promise<void> => {
+  await deleteDoc(doc(db, CLIENTES_ADMIN_SNAPSHOTS_COLLECTION, id));
+  void recordSiteActivity({
+    acao: 'excluiu',
+    modulo: 'administrativo',
+    descricao: 'Excluiu um registro de situação salva',
+    obraId,
   });
 };
 

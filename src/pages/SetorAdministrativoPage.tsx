@@ -5,6 +5,7 @@ import ClienteAdministrativoPDFViewer from '../components/ClienteAdministrativoP
 import ClienteAdministrativoForm from '../components/ClienteAdministrativoForm';
 import ClienteAdministrativoList from '../components/ClienteAdministrativoList';
 import ClienteAdministrativoFilters from '../components/ClienteAdministrativoFilters';
+import SaveSnapshotConfirmModal from '../components/SaveSnapshotConfirmModal';
 import type { ClienteAdministrativo } from '../types';
 import {
   emptyClienteAdminFilters,
@@ -23,9 +24,12 @@ import {
   deleteClienteAdministrativo,
   getClientesAdministrativos,
   getClientesAdministrativosByObraId,
+  saveClienteAdministrativoSnapshot,
   updateClienteAdministrativo,
 } from '../services/firestore';
 import { getCurrentUser, canManageObraData } from '../services/auth';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function SetorAdministrativoPage() {
   const { obraId, setorId } = useParams<{ obraId: string; setorId: string }>();
@@ -38,6 +42,9 @@ export default function SetorAdministrativoPage() {
   const [canManage, setCanManage] = useState(false);
   const [readOnlyView, setReadOnlyView] = useState(false);
   const [listFilters, setListFilters] = useState<ClienteAdminListFilters>(emptyClienteAdminFilters);
+  const [showSaveSnapshotModal, setShowSaveSnapshotModal] = useState(false);
+  const [savingSnapshot, setSavingSnapshot] = useState(false);
+  const [snapshotTimestampLabel, setSnapshotTimestampLabel] = useState('');
 
   const clientesFiltrados = useMemo(
     () => filterClientesAdministrativos(clientes, listFilters),
@@ -203,6 +210,43 @@ export default function SetorAdministrativoPage() {
     });
   };
 
+  const openSaveSnapshotModal = async () => {
+    let obraClientes = clientesObra;
+    if (obraClientes.length === 0 && obraId) {
+      obraClientes = await loadClientesObra();
+    }
+    if (obraClientes.length === 0) {
+      alert('Não há clientes cadastrados na obra para salvar.');
+      return;
+    }
+    setSnapshotTimestampLabel(format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
+    setShowSaveSnapshotModal(true);
+  };
+
+  const handleConfirmSaveSnapshot = async () => {
+    if (!obraId) return;
+    let obraClientes = clientesObra;
+    if (obraClientes.length === 0) {
+      obraClientes = await loadClientesObra();
+    }
+    if (obraClientes.length === 0) return;
+    const user = getCurrentUser();
+    const savedByNome = user?.displayName || user?.email || 'Usuário';
+    try {
+      setSavingSnapshot(true);
+      await saveClienteAdministrativoSnapshot(obraId, obraClientes, savedByNome);
+      setShowSaveSnapshotModal(false);
+      alert('Situação salva com sucesso.');
+    } catch (error) {
+      console.error('Erro ao salvar situação:', error);
+      alert('Erro ao salvar situação atual.');
+    } finally {
+      setSavingSnapshot(false);
+    }
+  };
+
+  const snapshotClientCount = clientesObra.length > 0 ? clientesObra.length : clientes.length;
+
   if (!setor || !obraId) {
     return (
       <div className="p-8 text-center">
@@ -264,6 +308,9 @@ export default function SetorAdministrativoPage() {
               filteredCount={clientesFiltrados.length}
               onExportPdf={handleExportPdf}
               onExportExcel={handleExportExcel}
+              onSaveSnapshot={() => void openSaveSnapshotModal()}
+              savingSnapshot={savingSnapshot}
+              saveSnapshotCount={clientesObra.length || clientes.length}
             />
             <ClienteAdministrativoList
               clientes={clientesFiltrados}
@@ -305,6 +352,17 @@ export default function SetorAdministrativoPage() {
           readOnly={readOnlyView}
         />
       )}
+
+      <SaveSnapshotConfirmModal
+        open={showSaveSnapshotModal}
+        timestampLabel={snapshotTimestampLabel}
+        clientCount={snapshotClientCount}
+        saving={savingSnapshot}
+        onConfirm={() => void handleConfirmSaveSnapshot()}
+        onCancel={() => {
+          if (!savingSnapshot) setShowSaveSnapshotModal(false);
+        }}
+      />
     </div>
   );
 }

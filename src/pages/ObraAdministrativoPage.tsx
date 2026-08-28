@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Briefcase, FileText, LayoutDashboard, List } from 'lucide-react';
+import { ArrowLeft, Briefcase, FileText, History, LayoutDashboard, LineChart, List } from 'lucide-react';
 import { getObraById } from '../config/setores';
 import { getSetoresAdministrativosByObraId } from '../config/setoresAdministrativo';
 import ClienteAdministrativoList from '../components/ClienteAdministrativoList';
 import ClienteAdministrativoForm from '../components/ClienteAdministrativoForm';
 import ClienteAdministrativoFilters from '../components/ClienteAdministrativoFilters';
 import ClienteAdministrativoDashboard from '../components/ClienteAdministrativoDashboard';
-import type { ClienteAdministrativo } from '../types';
+import ClienteAdministrativoGraficos from '../components/ClienteAdministrativoGraficos';
+import ClienteAdministrativoSituacoesSalvas from '../components/ClienteAdministrativoSituacoesSalvas';
+import SaveSnapshotConfirmModal from '../components/SaveSnapshotConfirmModal';
+import type { ClienteAdministrativo, ClienteAdministrativoSnapshot } from '../types';
 import {
   emptyClienteAdminFilters,
   filterClientesAdministrativos,
@@ -22,15 +25,23 @@ import {
 } from '../utils/clienteAdministrativoDuplicate';
 import {
   deleteClienteAdministrativo,
+  deleteClienteAdministrativoSnapshot,
   getClientesAdministrativos,
+  getClienteAdministrativoSnapshots,
+  saveClienteAdministrativoSnapshot,
   updateClienteAdministrativo,
 } from '../services/firestore';
-import { canManageObraData } from '../services/auth';
+import { canManageObraData, getCurrentUser } from '../services/auth';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function ObraAdministrativoPage() {
   const { obraId } = useParams<{ obraId: string }>();
-  const [tab, setTab] = useState<'projetos' | 'clientes' | 'dashboard'>('projetos');
+  const [tab, setTab] = useState<'projetos' | 'clientes' | 'dashboard' | 'graficos' | 'situacoes'>('projetos');
   const [allClientes, setAllClientes] = useState<ClienteAdministrativo[]>([]);
+  const [snapshots, setSnapshots] = useState<ClienteAdministrativoSnapshot[]>([]);
+  const [loadingSnapshots, setLoadingSnapshots] = useState(false);
+  const [snapshotsError, setSnapshotsError] = useState('');
   const [loadingList, setLoadingList] = useState(false);
   const [errorList, setErrorList] = useState('');
   const [selectedCliente, setSelectedCliente] = useState<ClienteAdministrativo | null>(null);
@@ -38,6 +49,10 @@ export default function ObraAdministrativoPage() {
   const [canManage, setCanManage] = useState(false);
   const [listFilters, setListFilters] = useState<ClienteAdminListFilters>(emptyClienteAdminFilters);
   const [tvMode, setTvMode] = useState(false);
+  const [graficosTvMode, setGraficosTvMode] = useState(false);
+  const [showSaveSnapshotModal, setShowSaveSnapshotModal] = useState(false);
+  const [savingSnapshot, setSavingSnapshot] = useState(false);
+  const [snapshotTimestampLabel, setSnapshotTimestampLabel] = useState('');
 
   const obra = obraId ? getObraById(obraId) : undefined;
   const setores = obraId ? getSetoresAdministrativosByObraId(obraId) : [];
@@ -80,8 +95,31 @@ export default function ObraAdministrativoPage() {
     }
   };
 
+  const loadSnapshots = async (opts?: { silent?: boolean }) => {
+    if (!obraId) return;
+    try {
+      if (!opts?.silent) setLoadingSnapshots(true);
+      setSnapshotsError('');
+      const data = await getClienteAdministrativoSnapshots(obraId);
+      setSnapshots(data);
+    } catch (err) {
+      console.error('Erro ao carregar histórico:', err);
+      setSnapshotsError('Não foi possível carregar o histórico. Verifique sua conexão ou as regras do Firestore.');
+    } finally {
+      if (!opts?.silent) setLoadingSnapshots(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'graficos' || tab === 'situacoes') {
+      void loadSnapshots();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, obraId]);
+
   useEffect(() => {
     void loadAll();
+    void loadSnapshots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obraId]);
 
@@ -93,6 +131,15 @@ export default function ObraAdministrativoPage() {
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tvMode, obraId]);
+
+  useEffect(() => {
+    if (!graficosTvMode) return;
+    const id = window.setInterval(() => {
+      void loadSnapshots({ silent: true });
+    }, 30 * 60 * 1000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graficosTvMode, obraId]);
 
   const filtered = useMemo(
     () => filterClientesAdministrativos(allClientes, listFilters),
@@ -179,6 +226,35 @@ export default function ObraAdministrativoPage() {
     });
   };
 
+  const openSaveSnapshotModal = () => {
+    setSnapshotTimestampLabel(format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
+    setShowSaveSnapshotModal(true);
+  };
+
+  const handleConfirmSaveSnapshot = async () => {
+    if (!obraId || allClientes.length === 0) return;
+    const user = getCurrentUser();
+    const savedByNome = user?.displayName || user?.email || 'Usuário';
+    try {
+      setSavingSnapshot(true);
+      await saveClienteAdministrativoSnapshot(obraId, allClientes, savedByNome);
+      setShowSaveSnapshotModal(false);
+      await loadSnapshots({ silent: true });
+      alert('Situação salva com sucesso.');
+    } catch (err) {
+      console.error('Erro ao salvar situação:', err);
+      alert('Erro ao salvar situação atual.');
+    } finally {
+      setSavingSnapshot(false);
+    }
+  };
+
+  const handleDeleteSnapshot = async (id: string) => {
+    if (!obraId) return;
+    await deleteClienteAdministrativoSnapshot(id, obraId);
+    await loadSnapshots({ silent: true });
+  };
+
   if (!obraId || !obra) {
     return (
       <div className="p-8 text-center">
@@ -242,6 +318,30 @@ export default function ObraAdministrativoPage() {
           >
             <LayoutDashboard size={18} className="mr-2" />
             Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('graficos')}
+            className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-medium border ${
+              tab === 'graficos'
+                ? 'bg-violet-600 text-white border-violet-600'
+                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <LineChart size={18} className="mr-2" />
+            Gráficos
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('situacoes')}
+            className={`inline-flex items-center rounded-md px-4 py-2 text-sm font-medium border ${
+              tab === 'situacoes'
+                ? 'bg-violet-600 text-white border-violet-600'
+                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <History size={18} className="mr-2" />
+            Situações salvas ({snapshots.length})
           </button>
         </div>
 
@@ -311,6 +411,38 @@ export default function ObraAdministrativoPage() {
           </div>
         )}
 
+        {tab === 'graficos' && (
+          <>
+            {snapshotsError && (
+              <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700 mb-4">
+                {snapshotsError}
+              </div>
+            )}
+            <ClienteAdministrativoGraficos
+              snapshots={snapshots}
+              loading={loadingSnapshots && !graficosTvMode}
+              obraNome={obra.nome}
+              onTvModeChange={setGraficosTvMode}
+            />
+          </>
+        )}
+
+        {tab === 'situacoes' && (
+          <>
+            {snapshotsError && (
+              <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700 mb-4">
+                {snapshotsError}
+              </div>
+            )}
+            <ClienteAdministrativoSituacoesSalvas
+              snapshots={snapshots}
+              loading={loadingSnapshots}
+              obraNome={obra.nome}
+              onDelete={handleDeleteSnapshot}
+            />
+          </>
+        )}
+
         {tab === 'clientes' && (
           <div className="space-y-4">
             {errorList && (
@@ -323,6 +455,8 @@ export default function ObraAdministrativoPage() {
               filteredCount={filtered.length}
               onExportPdf={handleExportPdf}
               onExportExcel={handleExportExcel}
+              onSaveSnapshot={openSaveSnapshotModal}
+              savingSnapshot={savingSnapshot}
             />
             {loadingList ? (
               <div className="py-12 text-center text-gray-500">Carregando clientes...</div>
@@ -363,6 +497,17 @@ export default function ObraAdministrativoPage() {
           }}
         />
       )}
+
+      <SaveSnapshotConfirmModal
+        open={showSaveSnapshotModal}
+        timestampLabel={snapshotTimestampLabel}
+        clientCount={allClientes.length}
+        saving={savingSnapshot}
+        onConfirm={() => void handleConfirmSaveSnapshot()}
+        onCancel={() => {
+          if (!savingSnapshot) setShowSaveSnapshotModal(false);
+        }}
+      />
     </div>
   );
 }
