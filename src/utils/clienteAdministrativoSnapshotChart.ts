@@ -147,26 +147,91 @@ export function lojaLabelFromKey(key: string): string {
   return parts.join(' • ');
 }
 
+function roundAverage(sum: number, count: number): number {
+  if (count <= 0) return 0;
+  return Math.round(sum / count);
+}
+
+function averageCounts(countsList: SnapshotStatusCounts[]): SnapshotStatusCounts {
+  if (countsList.length === 0) {
+    return { disponivel: 0, aberto: 0, fechado: 0, emReforma: 0, inadimplentes: 0, total: 0 };
+  }
+
+  let disponivel = 0;
+  let aberto = 0;
+  let fechado = 0;
+  let emReforma = 0;
+  let inadimplentes = 0;
+  let total = 0;
+
+  for (const counts of countsList) {
+    disponivel += counts.disponivel;
+    aberto += counts.aberto;
+    fechado += counts.fechado;
+    emReforma += counts.emReforma;
+    inadimplentes += counts.inadimplentes;
+    total += counts.total;
+  }
+
+  const n = countsList.length;
+  return {
+    disponivel: roundAverage(disponivel, n),
+    aberto: roundAverage(aberto, n),
+    fechado: roundAverage(fechado, n),
+    emReforma: roundAverage(emReforma, n),
+    inadimplentes: roundAverage(inadimplentes, n),
+    total: roundAverage(total, n),
+  };
+}
+
+function mostFrequentStatus(statuses: ClienteAdministrativoStatus[]): ClienteAdministrativoStatus {
+  const tally = new Map<ClienteAdministrativoStatus, number>();
+  for (const status of statuses) {
+    tally.set(status, (tally.get(status) ?? 0) + 1);
+  }
+
+  let best: ClienteAdministrativoStatus = statuses[0] ?? 'disponivel';
+  let bestCount = -1;
+  for (const status of STATUS_Y_ORDER) {
+    const count = tally.get(status) ?? 0;
+    if (count > bestCount) {
+      best = status;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+type SnapshotBucket = {
+  label: string;
+  timestamp: number;
+  snapshots: ClienteAdministrativoSnapshot[];
+};
+
 function bucketSnapshots(
   snapshots: ClienteAdministrativoSnapshot[],
   period: SnapshotPeriod
-): Map<string, { label: string; timestamp: number; snapshot: ClienteAdministrativoSnapshot }> {
-  const buckets = new Map<
-    string,
-    { label: string; timestamp: number; snapshot: ClienteAdministrativoSnapshot }
-  >();
+): Map<string, SnapshotBucket> {
+  const buckets = new Map<string, SnapshotBucket>();
 
   for (const snapshot of snapshots) {
     const date = new Date(snapshot.savedAt);
     if (Number.isNaN(date.getTime())) continue;
     const key = bucketKey(date, period, snapshot.id);
     const existing = buckets.get(key);
-    if (!existing || date.getTime() >= existing.timestamp) {
+    if (!existing) {
       buckets.set(key, {
         label: bucketLabel(key, period, date),
         timestamp: date.getTime(),
-        snapshot,
+        snapshots: [snapshot],
       });
+      continue;
+    }
+
+    existing.snapshots.push(snapshot);
+    if (date.getTime() < existing.timestamp) {
+      existing.timestamp = date.getTime();
+      existing.label = bucketLabel(key, period, date);
     }
   }
 
@@ -185,18 +250,16 @@ export function buildAggregateChartData(
   const points: AggregateChartPoint[] = [];
 
   for (const [key, bucket] of buckets) {
-    const filtered = filterSnapshotItems(
-      bucket.snapshot.clientes,
-      scope,
-      clienteId,
-      lojaKey,
-      setorLocal
+    const countsList = bucket.snapshots.map((snapshot) =>
+      countSnapshotStatuses(
+        filterSnapshotItems(snapshot.clientes, scope, clienteId, lojaKey, setorLocal)
+      )
     );
     points.push({
       key,
       label: bucket.label,
       timestamp: bucket.timestamp,
-      counts: countSnapshotStatuses(filtered),
+      counts: period === 'diario' ? (countsList[0] ?? averageCounts([])) : averageCounts(countsList),
     });
   }
 
@@ -214,23 +277,29 @@ export function buildEntityChartData(
   const points: EntityChartPoint[] = [];
 
   for (const [key, bucket] of buckets) {
-    const filtered =
-      scope === 'cliente'
-        ? bucket.snapshot.clientes.filter((i) => i.clienteId === entityId)
-        : bucket.snapshot.clientes.filter((i) => lojaKeyFromItem(i) === entityId);
+    const items = bucket.snapshots.flatMap((snapshot) => {
+      const filtered =
+        scope === 'cliente'
+          ? snapshot.clientes.filter((i) => i.clienteId === entityId)
+          : snapshot.clientes.filter((i) => lojaKeyFromItem(i) === entityId);
+      return filtered[0] ? [filtered[0]] : [];
+    });
 
-    if (filtered.length === 0) continue;
+    if (items.length === 0) continue;
 
-    const item = filtered[0];
-    const status = effectiveStatus(item);
+    const item = items[items.length - 1];
+    const status =
+      period === 'diario'
+        ? effectiveStatus(item)
+        : mostFrequentStatus(items.map((i) => effectiveStatus(i)));
     points.push({
       key,
       label: bucket.label,
       timestamp: bucket.timestamp,
       status,
       statusLabel: statusLabel(status),
-      inadimplencia: item.inadimplencia,
-      processoJudicial: item.processoJudicial,
+      inadimplencia: items.filter((i) => i.inadimplencia).length > items.length / 2,
+      processoJudicial: items.filter((i) => i.processoJudicial).length > items.length / 2,
     });
   }
 

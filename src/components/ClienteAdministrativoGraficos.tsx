@@ -416,7 +416,7 @@ function GraficosFilters({
         <p className="text-xs text-gray-500">
           {period === 'diario'
             ? 'Diário: cada salvamento aparece como um ponto (com data e hora).'
-            : 'Semanal, mensal e demais: agrupam vários salvamentos — fica o último de cada período.'}
+            : 'Semanal, mensal, semestral e anual: mostram a média das situações salvas no período (arredondada).'}
         </p>
       )}
     </div>
