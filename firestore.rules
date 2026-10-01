@@ -20,8 +20,12 @@ service cloud.firestore {
     // Usuários
     match /users/{userId} {
       allow read: if signedIn();
-      allow create: if isAdmin() || (signedIn() && request.auth.uid == userId);
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      // O campo `bloqueio` só pode ser alterado pelo admin.
+      allow create: if isAdmin()
+        || (signedIn() && request.auth.uid == userId && !('bloqueio' in request.resource.data));
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == userId
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['bloqueio']));
       allow delete: if isAdmin();
     }
 

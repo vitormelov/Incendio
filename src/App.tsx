@@ -20,6 +20,7 @@ import AdminPage from './pages/AdminPage';
 import AdminCollaboratorsPage from './pages/AdminCollaboratorsPage';
 import AdminNewCollaboratorPage from './pages/AdminNewCollaboratorPage';
 import AdminActivityLogPage from './pages/AdminActivityLogPage';
+import AdminBloqueioPage from './pages/AdminBloqueioPage';
 import IncendiosApagadosPage from './pages/IncendiosApagadosPage';
 import IncendioList from './components/IncendioList';
 import IncendioForm from './components/IncendioForm';
@@ -29,11 +30,27 @@ import ProtectedObraRoute from './components/ProtectedObraRoute';
 import ProtectedObraModuloRoute from './components/ProtectedObraModuloRoute';
 import ProtectedSetorRoute from './components/ProtectedSetorRoute';
 import Logo from './components/Logo';
+import BlockedScreen from './components/BlockedScreen';
 import { useState, useEffect } from 'react';
-import { Incendio } from './types';
-import { getIncendios, updateIncendio, formatLocalDate, getUserNameByEmail, deleteIncendio } from './services/firestore';
+import { Incendio, UserBloqueio } from './types';
+import {
+  getIncendios,
+  updateIncendio,
+  formatLocalDate,
+  getUserNameByEmail,
+  deleteIncendio,
+  subscribeUserBloqueio,
+} from './services/firestore';
 import { recordSiteActivity } from './services/activityLog';
-import { getCurrentUser, logout, onAuthChange, isAdmin, clearPermissionsCache, isDemoMode } from './services/auth';
+import {
+  getCurrentUser,
+  logout,
+  onAuthChange,
+  isAdmin,
+  isAdminEmail,
+  clearPermissionsCache,
+  isDemoMode,
+} from './services/auth';
 import { Home, LogOut, User, Shield, Menu, X } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -43,6 +60,8 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(getCurrentUser());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  /** `undefined` = ainda verificando; `null` = liberado. */
+  const [bloqueio, setBloqueio] = useState<UserBloqueio | null | undefined>(undefined);
 
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {
@@ -52,10 +71,19 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (!user || isAdminEmail(user.email)) {
+      setBloqueio(null);
+      return;
+    }
+    setBloqueio(undefined);
+    return subscribeUserBloqueio(user.uid, setBloqueio);
+  }, [user]);
+
+  useEffect(() => {
+    if (user && bloqueio === null) {
       loadAllIncendios();
     }
-  }, [user]);
+  }, [user, bloqueio]);
 
   const loadAllIncendios = async () => {
     try {
@@ -102,6 +130,18 @@ function App() {
     `${navLinkBase} ${
       isActive ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
     }`;
+
+  if (user && bloqueio === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (user && bloqueio) {
+    return <BlockedScreen bloqueio={bloqueio} onLogout={handleLogout} />;
+  }
 
   return (
     <BrowserRouter>
@@ -248,6 +288,14 @@ function App() {
             element={
               <ProtectedAdminRoute>
                 <AdminActivityLogPage />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/bloqueio"
+            element={
+              <ProtectedAdminRoute>
+                <AdminBloqueioPage />
               </ProtectedAdminRoute>
             }
           />

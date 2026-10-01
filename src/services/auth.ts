@@ -144,6 +144,9 @@ export const isAdmin = (user: User | null): boolean => {
   return user?.email === ADMIN_EMAIL;
 };
 
+export const isAdminEmail = (email: string | null | undefined): boolean =>
+  (email ?? '').trim().toLowerCase() === ADMIN_EMAIL;
+
 type UserFirestoreProfile = {
   permissions: UserPermission[];
   /** `null` = todas as obras; array = apenas IDs listados (pode ser vazio). */

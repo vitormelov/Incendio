@@ -13,6 +13,7 @@ import {
   Timestamp,
   writeBatch,
   deleteField,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { parseObraModulosPermitidosDoUsuario } from '../config/obraModulos';
@@ -30,6 +31,8 @@ import {
   Disciplina,
   Severidade,
   Collaborator,
+  UserBloqueio,
+  USER_BLOQUEIO_VALUES,
   ObraNote,
   ObraService,
   UserPermission,
@@ -281,6 +284,9 @@ export const getUserNameByEmail = (email: string | null | undefined): string => 
   return email || 'Usuário';
 };
 
+const parseUserBloqueio = (value: unknown): UserBloqueio | null =>
+  USER_BLOQUEIO_VALUES.includes(value as UserBloqueio) ? (value as UserBloqueio) : null;
+
 export const getCollaborators = async (): Promise<Collaborator[]> => {
   const querySnapshot = await getDocs(collection(db, USERS_COLLECTION));
 
@@ -298,6 +304,7 @@ export const getCollaborators = async (): Promise<Collaborator[]> => {
         permissions,
         obraIdsPermitidos: parseObraIdsPermitidosDoUsuario(data as Record<string, unknown>),
         obraModulosPermitidos: parseObraModulosPermitidosDoUsuario(data as Record<string, unknown>),
+        bloqueio: parseUserBloqueio(data.bloqueio),
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
       };
@@ -341,6 +348,41 @@ export const updateCollaborator = async (
     descricao: `Atualizou permissões de ${data.nome}`,
   });
 };
+
+const BLOQUEIO_DESCRICAO: Record<UserBloqueio, string> = {
+  bloqueado: 'Bloqueou o acesso de',
+  fora_do_ar: 'Ativou "site fora do ar" para',
+};
+
+export const setCollaboratorBloqueio = async (
+  userId: string,
+  nome: string,
+  bloqueio: UserBloqueio | null
+): Promise<void> => {
+  await updateDoc(doc(db, USERS_COLLECTION, userId), {
+    bloqueio: bloqueio ?? deleteField(),
+    updatedAt: new Date().toISOString(),
+  });
+  void recordSiteActivity({
+    acao: 'editou',
+    modulo: 'colaboradores',
+    descricao: bloqueio ? `${BLOQUEIO_DESCRICAO[bloqueio]} ${nome}` : `Liberou o acesso de ${nome}`,
+  });
+};
+
+/** Acompanha em tempo real o bloqueio do usuário (aplica na hora, sem precisar recarregar). */
+export const subscribeUserBloqueio = (
+  userId: string,
+  onChange: (bloqueio: UserBloqueio | null) => void
+): (() => void) =>
+  onSnapshot(
+    doc(db, USERS_COLLECTION, userId),
+    (snap) => onChange(snap.exists() ? parseUserBloqueio(snap.data().bloqueio) : null),
+    (error) => {
+      console.error('Erro ao verificar bloqueio do usuário:', error);
+      onChange(null);
+    }
+  );
 
 export const getIncendios = async (setor?: string): Promise<Incendio[]> => {
   let q;

@@ -217,6 +217,15 @@ import type { ObraModuloId } from '../config/obraModulos';
 
 export type UserPermission = 'colaborador';
 
+/**
+ * Bloqueio de acesso definido pelo admin.
+ * - `bloqueado`: mostra "usuário bloqueado, verifique com o administrador".
+ * - `fora_do_ar`: mostra uma tela como se o site estivesse fora do ar.
+ */
+export type UserBloqueio = 'bloqueado' | 'fora_do_ar';
+
+export const USER_BLOQUEIO_VALUES: UserBloqueio[] = ['bloqueado', 'fora_do_ar'];
+
 export interface Collaborator {
   id: string;
   nome: string;
@@ -233,6 +242,8 @@ export interface Collaborator {
    * `null` = todas as opções. Array vazio = nenhuma seção.
    */
   obraModulosPermitidos: ObraModuloId[] | null;
+  /** `null` = acesso liberado. */
+  bloqueio: UserBloqueio | null;
   createdAt: string | null;
   updatedAt?: string | null;
 }
